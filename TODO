@@ -1,4 +1,16 @@
-
 Todo:
-  ☐ Implement pydantic validator for JSON output
+  ☐ Complete OpenAI adapter implementation
+  ☐ Move validators to src/validators/
+  ☐ Fix validator imports
+  ☐ Build enforcement engine
+  ☐ Create basic example
+  ☐ Add pyproject.toml
+  ☐ Write basic tests
+  ☐ Test with real API call
   
+  Future:
+  ☐ Add Pydantic validator
+  ☐ Add more adapters (Anthropic, Gemini)
+  ☐ Add retry logic with backoff
+  ☐ Add rate limiting
+  ☐ Add metrics collection
