@@ -1,6 +1,7 @@
 [project]
 name = "llm-structured-output-engine"
 version = "0.1.0"
+requires-python = ">=3.8"
 dependencies = [
     "openai>=1.0.0",
     "pydantic>=2.0.0",
@@ -13,3 +14,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
