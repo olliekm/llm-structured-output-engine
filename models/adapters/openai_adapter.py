@@ -1,18 +1,58 @@
-from typing import Any, Dict, Optional
-import base_adapter
+from openai import AsyncOpenAI
+from src.core import BaseLLMAdapter, GenerationResponse, ModelProviders
+import time
+import json
 
-
-class OpenAIAdapter(base_adapter.LLMAdapter):
-    """Adapter for OpenAI LLMs."""
-
-    async def generate(self, prompt: str, schema: Optional[Dict[str, Any]] = None, **kwargs) -> str:
-        # Implementation for generating output using OpenAI's API
-        pass
-
+class OpenAIAdapter(BaseLLMAdapter):
+    """OpenAI implementation"""
+    
+    def _initialize_client(self):
+        return AsyncOpenAI(api_key=self.api_key)
+    
+    @property
+    def provider(self) -> ModelProviders:
+        return ModelProviders.OPENAI
+    
     def supports_native_structure_output(self) -> bool:
-        # Implementation to check if OpenAI supports native structured output
-        return True
-
+        return True  # OpenAI has JSON mode
+    
+    async def generate(self, prompt: str, schema=None, temperature=0.7, 
+                      max_tokens=None, **kwargs) -> GenerationResponse:
+        client = self.get_client()
+        start = time.perf_counter()
+        
+        messages = [{"role": "user", "content": prompt}]
+        
+        # Use JSON mode if schema provided
+        extra_args = {}
+        if schema and self.supports_native_structure_output():
+            extra_args["response_format"] = {"type": "json_object"}
+            # Add schema to prompt
+            messages[0]["content"] = f"{prompt}\n\nReturn valid JSON matching this schema: {json.dumps(schema)}"
+        
+        response = await client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **extra_args,
+            **kwargs
+        )
+        
+        latency = (time.perf_counter() - start) * 1000
+        
+        return GenerationResponse(
+            output=response.choices[0].message.content,
+            provider=self.provider.value,
+            model=self.model,
+            tokens_used=response.usage.total_tokens,
+            latency_ms=latency
+        )
+    
     async def health_check(self) -> bool:
-        # Implementation for performing a health check on the OpenAI adapter
-        pass
+        try:
+            client = self.get_client()
+            await client.models.list()
+            return True
+        except:
+            return False
