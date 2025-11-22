@@ -1,5 +1,5 @@
-from src.core import BaseLLMAdapter, GenerationResponse, ValidationResult, ValidationStatus
-from src.validators.base_validator import BaseValidator
+from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ValidationResult, ValidationStatus
+from llm_structured_output_engine.validators.base_validator import BaseValidator
 from typing import Any, Optional
 from pydantic import BaseModel
 

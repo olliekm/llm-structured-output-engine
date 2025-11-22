@@ -21,3 +21,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["llm_structured_output_engine", "src", "src.*", "models", "models.*"]
+
+[tool.setuptools.package-dir]
+"" = "src"

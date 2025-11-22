@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from src.core import BaseLLMAdapter, GenerationResponse, ModelProviders
+from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ModelProviders
 import time
 import json
 
