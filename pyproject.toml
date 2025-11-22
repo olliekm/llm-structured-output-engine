@@ -1,7 +1,7 @@
 [project]
 name = "llm-structured-output-engine"
 version = "0.1.0"
-poetry install --no-rootrequires-python = ">=3.8"
+requires-python = ">=3.8"
 dependencies = [
     "openai>=1.0.0",
     "pydantic>=2.0.0",

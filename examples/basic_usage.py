@@ -1,6 +1,6 @@
 import asyncio
 from pydantic import BaseModel
-from src.adapters.openai_adapter import OpenAIAdapter
+from models.adapters.openai_adapter import OpenAIAdapter
 from src.validators.json_validator import JSONValidator
 from src.enforcement.engine import EnforcementEngine
 
