@@ -1,5 +1,5 @@
 import pytest
-from models.adapters.openai_adapter import OpenAIAdapter
+from llm_structured_output_engine.models.adapters.openai_adapter import OpenAIAdapter
 from llm_structured_output_engine.validators.json_validator import JSONValidator
 from llm_structured_output_engine.enforcement.engine import EnforcementEngine
 
