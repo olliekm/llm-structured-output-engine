@@ -1,4 +1,3 @@
-import base_validator
 from typing import Any, Dict, List, Optional
 from .base_validator import BaseValidator, ValidationResult, ValidationStatus, ValidationError
 import jsonschema
