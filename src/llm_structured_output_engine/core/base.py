@@ -37,6 +37,17 @@ class BaseLLMAdapter(ABC):
         self.config = kwargs
         self._client = None  # Placeholder for the LLM client instance
 
+    def get_client(self):
+        """Return an initialized client instance, caching it on the adapter."""
+        if self._client is None:
+            # Adapter implementations may provide an `_initialize_client` helper
+            init = getattr(self, "_initialize_client", None)
+            if callable(init):
+                self._client = init()
+            else:
+                raise RuntimeError("Adapter does not implement _initialize_client")
+        return self._client
+
     @abstractmethod
     async def generate(self, prompt: str, schema: Optional[Dict[str, Any]] = None, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
         """Generate output from LLM"""

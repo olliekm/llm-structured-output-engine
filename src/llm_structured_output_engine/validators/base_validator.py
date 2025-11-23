@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 class ValidationStatus(Enum):
@@ -24,7 +24,7 @@ class ValidationResult:
     """Class representing the result of a validation."""
     status: ValidationStatus
     parsed_output: Optional[Any] = None
-    errors: List[ValidationError] = None
+    errors: List[ValidationError] = field(default_factory=list)
     raw_output: str = ""
     repair_attempted: bool = False
     repair_successful: bool = False
