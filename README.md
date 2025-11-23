@@ -74,5 +74,4 @@ poetry run pytest -q
 
 ## License
 
-Add your license here (e.g., MIT) if you want this project published.
 
