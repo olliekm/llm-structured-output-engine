@@ -1,5 +1,6 @@
 import anthropic
 from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ModelProviders
+import time
 
 class AnthropicAdapter(BaseLLMAdapter):
     """Adapter for Anthropic's API with custom configurations."""
@@ -12,35 +13,59 @@ class AnthropicAdapter(BaseLLMAdapter):
         return ModelProviders.ANTHROPIC
     
     def supports_native_structure_output(self) -> bool:
-        return False  # Anthropic does not have native JSON mode
+        return True  # Anthropic does not have native JSON mode
     
     async def generate(self, prompt: str, schema=None, temperature=0.7,
                         max_tokens=None, **kwargs) -> GenerationResponse:
+            if max_tokens is None:
+                max_tokens = 4096
+            start = time.perf_counter()
+
+            message_params = {
+                "model": self.model,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            }
+
+            if schema:
+                message_params["response_format"] = {
+                    "type": "json_schema"
+                }
+
+            message_params.update(kwargs)
+
             client = self.get_client()
-            
-            # Construct the full prompt
-            full_prompt = f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}"
-            
-            response = await client.completions.create(
-                model=self.model,
-                prompt=full_prompt,
-                temperature=temperature,
-                max_tokens_to_sample=max_tokens,
-                **kwargs
-            )
-            
+
+            response = await client.messages.create(**message_params)
+
+            # Extract text from content blocks
+            output = ""
+            for block in response.content:
+                if block.type == "text":
+                    output += block.text
+
+            latency = (time.perf_counter() - start) * 1000
+
             return GenerationResponse(
-                output=response.completion,
+                output=output,
                 provider=self.provider.value,
                 model=self.model,
-                tokens_used=response.usage.total_tokens,
-                latency_ms=response.latency_ms
+                tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+                latency_ms=latency  # Anthropic doesn't provide latency in response
             )
     
     async def health_check(self) -> bool:
         try:
             client = self.get_client()
-            await client.models.list()
+            await client.messages.create(
+                model=self.model,
+                max_tokens=10,
+                messages=[
+                    {"role": "user", "content": "Hello, are you there?"}
+                ])
             return True
         except:
             return False
