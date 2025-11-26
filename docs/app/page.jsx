@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import LiquidEther from '@/components/LiquidEther';
+// import LiquidEther from '@/components/LiquidEther';
 
 export default function Home() {
   return (
