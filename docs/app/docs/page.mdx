@@ -1,26 +1,48 @@
-# LLM Structured Output Engine
+# Welcome
 
-Welcome to the LLM Structured Output Engine documentation.
+Welcome to the **parsec** documentation
 
-## Getting Started
-
-Install the package:
-
-```bash
-pip install llm-structured-output-engine
-```
+Created by [Oliver Kwun-Morfitt](https://olliekm.com)
 
 ## Quick Example
 
 ```python
-# Add your quick example here
+adapter = OpenAIAdapter(
+    api_key="your-key-here",
+    model="gpt-4o-mini"
+)
+
+validator = JSONValidator()
+
+engine = EnforcementEngine(
+    adapter=adapter,
+    validator=validator,
+    max_retries=3
+)
+
+# Define schema
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "number"},
+        "email": {"type": "string"}
+    },
+    "required": ["name", "age", "email"]
+}
+
+# Enforce
+result = await engine.enforce(
+    prompt="Extract person info: John is 30 years old, john@example.com",
+    schema=schema
+)
 ```
 
 ## Features
 
-- Feature 1
-- Feature 2
-- Feature 3
+- JSON schema and Pydantic validation
+- Automatic secham repair
+- *Coming soon: Decorator for extending functionality*
 
 ## Next Steps
 

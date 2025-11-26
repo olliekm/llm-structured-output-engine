@@ -1,10 +1,10 @@
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
-import Logo from '@/components/Logo'
+
 const navbar = (
   <Navbar
-    logo={<Logo />}
+    logo={<b>parsec</b>}
     projectLink="https://github.com/olliekm/parsec"
   />
 )
