@@ -73,5 +73,7 @@ poetry run pytest -q
 	can be extended to support additional providers and formats.
 
 ## License
+MIT
 
+Updated 26/11/2025
 
