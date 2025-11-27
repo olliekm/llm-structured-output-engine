@@ -1,5 +1,6 @@
 import anthropic
 from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ModelProviders
+from typing import AsyncIterator
 import time
 
 class AnthropicAdapter(BaseLLMAdapter):
@@ -7,14 +8,17 @@ class AnthropicAdapter(BaseLLMAdapter):
 
     def _initialize_client(self):
         return anthropic.Anthropic(api_key=self.api_key)
-    
+
     @property
     def provider(self) -> ModelProviders:
         return ModelProviders.ANTHROPIC
-    
+
     def supports_native_structure_output(self) -> bool:
-        return True  # Anthropic does not have native JSON mode
-    
+        return True
+
+    def supports_streaming(self) -> bool:
+        return True
+
     async def generate(self, prompt: str, schema=None, temperature=0.7,
                         max_tokens=None, **kwargs) -> GenerationResponse:
             if max_tokens is None:
@@ -54,9 +58,44 @@ class AnthropicAdapter(BaseLLMAdapter):
                 provider=self.provider.value,
                 model=self.model,
                 tokens_used=response.usage.input_tokens + response.usage.output_tokens,
-                latency_ms=latency  # Anthropic doesn't provide latency in response
+                latency_ms=latency
             )
-    
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        schema=None,
+        temperature=0.7,
+        max_tokens=None,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream tokens from Anthropic API"""
+        if max_tokens is None:
+            max_tokens = 4096
+
+        message_params = {
+            "model": self.model,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "stream": True
+        }
+
+        if schema:
+            message_params["response_format"] = {
+                "type": "json_schema"
+            }
+
+        message_params.update(kwargs)
+
+        client = self.get_client()
+
+        async with client.messages.stream(**message_params) as stream:
+            async for text in stream.text_stream:
+                yield text
+
     async def health_check(self) -> bool:
         try:
             client = self.get_client()
@@ -69,5 +108,3 @@ class AnthropicAdapter(BaseLLMAdapter):
             return True
         except:
             return False
-        
-    

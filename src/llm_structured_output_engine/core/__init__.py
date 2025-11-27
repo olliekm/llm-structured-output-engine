@@ -3,7 +3,9 @@ from .schemas import (
     ValidationStatus,
     ValidationError,
     ValidationResult,
-    GenerationResponse
+    GenerationResponse,
+    StreamChunk,
+    StreamValidationResult
 )
 
 __all__ = [
@@ -14,4 +16,6 @@ __all__ = [
     "ValidationError",
     "ValidationResult",
     "GenerationResponse",
+    "StreamChunk",
+    "StreamValidationResult",
 ]

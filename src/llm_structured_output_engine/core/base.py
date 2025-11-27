@@ -25,7 +25,7 @@ class OutputFormats(Enum):
 #
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, AsyncIterator
 from pydantic import BaseModel
 
 class BaseLLMAdapter(ABC):
@@ -57,4 +57,26 @@ class BaseLLMAdapter(ABC):
     def supports_native_structure_output(self) -> bool:
         """Checks whether the adapter supports native structured output."""
         pass
-    
+
+    def supports_streaming(self) -> bool:
+        """Checks whether the adapter supports streaming."""
+        return False
+
+    async def generate_stream(
+        self,
+        prompt: str,
+        schema: Optional[Dict[str, Any]] = None,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """
+        Generate output from LLM as a stream of tokens.
+
+        Yields:
+            str: Each token/chunk of text as it's generated
+
+        Raises:
+            NotImplementedError: If the adapter doesn't support streaming
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not support streaming")
