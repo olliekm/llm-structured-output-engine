@@ -16,13 +16,13 @@ class InMemoryCache(BaseCache):
     def get(self, key: str) -> Optional[Any]:
         if key in self._cache:
             entry = self._cache[key]
-            if entry[key]["timestamp"] + entry[key]["ttl"] < time.time():
+            if entry["timestamp"] + entry["ttl"] < time.time():
                 self.delete(key)
                 self._misses += 1
                 return None
             self._hits += 1
             self._cache.move_to_end(key)  # Mark as recently used
-            return entry[key]["value"]
+            return entry["value"]
         self._misses += 1
         return None
     
