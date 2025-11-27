@@ -3,6 +3,7 @@ export default {
     display: 'hidden'
   },
   'get-started': 'Get Started',
+  'model-adapters': 'Model Adapters',
   'engines': 'Engines',
   'validators': 'Validators'
 }
