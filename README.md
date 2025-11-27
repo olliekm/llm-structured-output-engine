@@ -1,4 +1,4 @@
-# llm-structured-output-engine
+# parsec
 
 Lightweight orchestration toolkit to generate, validate, repair and enforce
 structured output from large language models (LLMs). The project provides a
