@@ -1,7 +1,7 @@
 import pytest
 import json
-from llm_structured_output_engine.validators.json_validator import JSONValidator
-from llm_structured_output_engine.validators.base_validator import (
+from parsec.validators.json_validator import JSONValidator
+from parsec.validators.base_validator import (
     ValidationStatus,
     ValidationError,
     ValidationResult,

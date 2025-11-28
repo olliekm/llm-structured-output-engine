@@ -1,7 +1,7 @@
 import pytest
-from llm_structured_output_engine.models.adapters.openai_adapter import OpenAIAdapter
-from llm_structured_output_engine.validators.json_validator import JSONValidator
-from llm_structured_output_engine.enforcement.engine import EnforcementEngine
+from parsec.models.adapters.openai_adapter import OpenAIAdapter
+from parsec.validators.json_validator import JSONValidator
+from parsec.enforcement.engine import EnforcementEngine
 
 @pytest.mark.asyncio
 async def test_basic_enforcement():

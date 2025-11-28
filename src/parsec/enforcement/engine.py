@@ -1,5 +1,5 @@
-from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ValidationResult, ValidationStatus
-from llm_structured_output_engine.validators.base_validator import BaseValidator
+from parsec.core import BaseLLMAdapter, GenerationResponse, ValidationResult, ValidationStatus
+from parsec.validators.base_validator import BaseValidator
 from typing import Any, Optional
 from pydantic import BaseModel
 from dataclasses import asdict, is_dataclass

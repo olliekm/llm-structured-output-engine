@@ -10,8 +10,8 @@ This example shows how to:
 
 import asyncio
 import os
-from llm_structured_output_engine.models.adapters.openai_adapter import OpenAIAdapter
-from llm_structured_output_engine.enforcement.streaming_engine import StreamingEngine
+from parsec.models.adapters.openai_adapter import OpenAIAdapter
+from parsec.enforcement.streaming_engine import StreamingEngine
 
 
 async def basic_streaming():

@@ -1,5 +1,5 @@
 import anthropic
-from llm_structured_output_engine.core import BaseLLMAdapter, GenerationResponse, ModelProviders
+from parsec.core import BaseLLMAdapter, GenerationResponse, ModelProviders
 from typing import AsyncIterator
 import time
 

@@ -1,5 +1,5 @@
-from llm_structured_output_engine.core import BaseLLMAdapter, StreamChunk
-from llm_structured_output_engine.utils.partial_json import PartialJSONParser
+from parsec.core import BaseLLMAdapter, StreamChunk
+from parsec.utils.partial_json import PartialJSONParser
 from typing import AsyncIterator, Any, Optional
 import time
 
