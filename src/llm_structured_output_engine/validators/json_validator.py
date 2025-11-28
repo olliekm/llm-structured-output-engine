@@ -45,7 +45,7 @@ class JSONValidator(BaseValidator):
                 path=path,
                 message=err.message,
                 expected=err.schema.get("type", "unknown"),
-                actual=str(err.instance).__name__,
+                actual=type(err.instance).__name__,
                 severity="error"
             ))
 
