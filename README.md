@@ -1,5 +1,9 @@
 # parsec
 
+[![Tests](https://github.com/olliekm/parsec/actions/workflows/test.yml/badge.svg)](https://github.com/olliekm/parsec/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 Lightweight orchestration toolkit to generate, validate, repair and enforce
 structured output from large language models (LLMs). The project provides a
 provider-agnostic adapter interface, validators (JSON/pydantic), and an
@@ -73,7 +77,8 @@ poetry run pytest -q
 	can be extended to support additional providers and formats.
 
 ## License
-MIT
 
-Updated 26/11/2025
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Oliver Kwun-Morfitt
 
