@@ -32,10 +32,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/olliekm/parsec"
+Homepage = "https://parsec.olliekm.com"
 Repository = "https://github.com/olliekm/parsec"
 Issues = "https://github.com/olliekm/parsec/issues"
-Documentation = "https://github.com/olliekm/parsec#readme"
+Documentation = "https://parsec.olliekm.com/docs"
 
 [project.optional-dependencies]
 dev = [
