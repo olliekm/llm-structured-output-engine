@@ -1,12 +1,17 @@
 requirements.txt
 src/*.egg-info/
-src/*.egg-info/
 .venv/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+**/__pycache__/
+**/*.pyc
 
 # Test artifacts
 .pytest_cache/
 htmlcov/
 .coverage
 coverage.xml
-*.pyc
-__pycache__/
