@@ -1,6 +1,7 @@
 [project]
 name = "llm-structured-output-engine"
 version = "0.1.0"
+license = "MIT"
 requires-python = ">=3.8"
 dependencies = [
     "openai>=1.0.0",
