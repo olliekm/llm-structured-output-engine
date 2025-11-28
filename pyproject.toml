@@ -1,8 +1,28 @@
 [project]
-name = "llm-structured-output-engine"
-version = "0.1.0"
-license = "MIT"
-requires-python = ">=3.8"
+name = "parsec-llm"
+version = "0.1.1s"
+description = "Lightweight orchestration toolkit to generate, validate, repair and enforce structured output from LLMs"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Oliver Kwun-Morfitt", email = "oliverkwunmorfitt@gmail.com"}
+]
+maintainers = [
+    {name = "Oliver Kwun-Morfitt", email = "oliverkwunmorfitt@gmail.com"}
+]
+keywords = ["llm", "structured-output", "validation", "json-schema", "openai", "anthropic"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
 dependencies = [
     "openai>=1.0.0",
     "anthropic>=0.18.0",
@@ -10,6 +30,12 @@ dependencies = [
     "jsonschema>=4.0.0",
     "aiohttp>=3.9.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/olliekm/parsec"
+Repository = "https://github.com/olliekm/parsec"
+Issues = "https://github.com/olliekm/parsec/issues"
+Documentation = "https://github.com/olliekm/parsec#readme"
 
 [project.optional-dependencies]
 dev = [
