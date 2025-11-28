@@ -24,14 +24,59 @@ This repository contains:
 - Retry loop with feedback to the model for progressive repair.
 - Small test suite and example runner using the OpenAI adapter.
 
-## Quickstart
+## Installation
 
-Requirements: Python 3.8+, [Poetry](https://python-poetry.org/) recommended.
+```bash
+pip install parsec-llm
+```
+
+Or for development:
+
+```bash
+git clone https://github.com/olliekm/parsec.git
+cd parsec
+pip install -e ".[dev]"
+```
+
+## Quick Example
+
+```python
+from parsec.models.adapters import OpenAIAdapter
+from parsec.validators import JSONValidator
+from parsec.enforcement import EnforcementEngine
+
+# Set up components
+adapter = OpenAIAdapter(api_key="your-api-key", model="gpt-4o-mini")
+validator = JSONValidator()
+engine = EnforcementEngine(adapter, validator)
+
+# Define your schema
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"}
+    },
+    "required": ["name"]
+}
+
+# Enforce structured output
+result = await engine.enforce(
+    "Extract: John Doe is 30 years old",
+    schema
+)
+
+print(result.parsed_output)  # {"name": "John Doe", "age": 30}
+```
+
+## Development Setup
+
+Requirements: Python 3.9+
 
 1. Install dependencies:
 
 ```bash
-poetry install
+pip install -e ".[dev]"
 ```
 
 2. Run tests:
@@ -53,12 +98,14 @@ The example demonstrates using `OpenAIAdapter`, `JSONValidator` and
 
 ## Code Structure
 
-- `src/llm_structured_output_engine/core` — core abstractions and schemas.
-- `src/llm_structured_output_engine/models` — provider adapters (OpenAI).
-- `src/llm_structured_output_engine/validators` — validator implementations.
-- `src/llm_structured_output_engine/enforcement` — enforcement/orchestration logic.
+- `src/parsec/core` — core abstractions and schemas.
+- `src/parsec/models` — provider adapters (OpenAI, Anthropic).
+- `src/parsec/validators` — validator implementations.
+- `src/parsec/enforcement` — enforcement/orchestration logic.
+- `src/parsec/cache` — caching implementations.
+- `src/parsec/utils` — utility functions (partial JSON parsing).
 - `examples/` — example runners (real OpenAI example included).
-- `tests/` — unit tests.
+- `tests/` — unit tests with pytest.
 
 ## Testing
 
