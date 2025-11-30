@@ -5,5 +5,7 @@ export default {
   'get-started': 'Get Started',
   'model-adapters': 'Model Adapters',
   'engines': 'Engines',
-  'validators': 'Validators'
+  'validators': 'Validators',
+  'testing': 'Testing',
+  'logging': 'Logging'
 }

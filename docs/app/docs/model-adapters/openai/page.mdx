@@ -5,4 +5,128 @@ import AdapterLogo from '@/components/AdapterLogo'
   <h1 className="text-4xl font-bold m-0">OpenAI Adapter</h1>
 </div>
 
-Documentation for the OpenAI adapter.
+The OpenAI adapter provides integration with OpenAI's API, supporting models like GPT-4, GPT-4o, and GPT-3.5-turbo.
+
+## Features
+
+- ✅ **Native JSON Mode**: Supports OpenAI's built-in structured output via `response_format`
+- ✅ **Streaming Support**: Stream responses token-by-token for real-time applications
+- ✅ **Logging**: Comprehensive logging with request context and performance metrics
+- ✅ **Health Checks**: Built-in health check to verify API connectivity
+- ✅ **Token Tracking**: Automatic token usage tracking for cost monitoring
+
+## Installation
+
+```bash
+pip install openai
+```
+
+## Basic Usage
+
+```python
+from parsec.models.adapters import OpenAIAdapter
+
+adapter = OpenAIAdapter(
+    api_key="your-openai-api-key",
+    model="gpt-4o-mini"
+)
+
+# Generate a response
+result = await adapter.generate("What is the capital of France?")
+print(result.output)  # "Paris"
+print(result.tokens_used)  # e.g., 25
+print(result.latency_ms)  # e.g., 342.5
+```
+
+## Structured Output with Schema
+
+The OpenAI adapter uses JSON mode when a schema is provided:
+
+```python
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "email": {"type": "string"}
+    },
+    "required": ["name", "age"]
+}
+
+result = await adapter.generate(
+    "Extract: John Doe is 30 years old, john@example.com",
+    schema=schema,
+    temperature=0.7
+)
+
+print(result.output)  # '{"name": "John Doe", "age": 30, "email": "john@example.com"}'
+```
+
+## Streaming
+
+Stream responses for real-time applications:
+
+```python
+async for chunk in adapter.generate_stream(
+    "Write a short story about a robot",
+    temperature=0.8
+):
+    print(chunk, end="", flush=True)
+```
+
+## Configuration Options
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `api_key` | `str` | Required | Your OpenAI API key |
+| `model` | `str` | Required | Model name (e.g., "gpt-4o-mini", "gpt-4") |
+| `temperature` | `float` | 0.7 | Sampling temperature (0.0 to 2.0) |
+| `max_tokens` | `int` | None | Maximum tokens to generate |
+| `schema` | `dict` | None | JSON schema for structured output |
+
+## Logging
+
+The adapter includes comprehensive logging:
+
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# Logs will show:
+# INFO - Generating response from OpenAI model gpt-4o-mini
+# DEBUG - Success: 25 tokens
+```
+
+## Health Check
+
+Verify API connectivity:
+
+```python
+is_healthy = await adapter.health_check()
+if is_healthy:
+    print("OpenAI API is accessible")
+```
+
+## Supported Models
+
+- `gpt-4o` - Latest GPT-4 Turbo with vision
+- `gpt-4o-mini` - Faster, cheaper GPT-4o variant
+- `gpt-4-turbo` - GPT-4 Turbo
+- `gpt-4` - Standard GPT-4
+- `gpt-3.5-turbo` - Fast and cost-effective
+
+## Error Handling
+
+```python
+try:
+    result = await adapter.generate("Hello")
+except Exception as e:
+    # Logs automatically include full stack trace
+    print(f"Generation failed: {e}")
+```
+
+## Notes
+
+- The adapter automatically appends schema instructions to the prompt when using JSON mode
+- Token usage includes both input and output tokens
+- Latency is measured in milliseconds from request start to completion

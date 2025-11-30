@@ -1,0 +1,392 @@
+# Logging
+
+Comprehensive logging infrastructure for monitoring, debugging, and performance tracking in **parsec**.
+
+## Overview
+
+All adapters and core components in parsec include structured logging with:
+- Request context (model, prompt length)
+- Performance metrics (tokens, latency)
+- Error tracking with full stack traces
+- Configurable log levels
+
+## Quick Start
+
+```python
+import logging
+
+# Enable logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+from parsec.models.adapters import OpenAIAdapter
+
+adapter = OpenAIAdapter(api_key="your-key", model="gpt-4o-mini")
+result = await adapter.generate("Hello world")
+
+# Output:
+# 2025-11-30 14:32:15 - parsec.models.adapters.openai_adapter - INFO - Generating response from OpenAI model gpt-4o-mini
+# 2025-11-30 14:32:16 - parsec.models.adapters.openai_adapter - DEBUG - Success: 25 tokens
+```
+
+## Log Levels
+
+### INFO
+Logs high-level operations:
+- API calls initiated
+- Model and configuration details
+- Prompt metadata (length, etc.)
+
+```python
+self.logger.info(f"Generating response from OpenAI model {self.model}", extra={
+    "model": self.model,
+    "prompt_length": len(prompt),
+})
+```
+
+### DEBUG
+Logs detailed execution info:
+- Token usage
+- Latency measurements
+- Response metadata
+
+```python
+self.logger.debug(f"Success: {tokens} tokens")
+```
+
+### ERROR
+Logs failures with full context:
+- Exception details
+- Stack traces
+- Error messages
+
+```python
+self.logger.error(f"Generation failed: {str(e)}", exc_info=True)
+```
+
+## Configuration
+
+### Basic Configuration
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+```
+
+### Advanced Configuration
+
+```python
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Create logger
+logger = logging.getLogger('parsec')
+logger.setLevel(logging.DEBUG)
+
+# Console handler (INFO and above)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+console_handler.setFormatter(console_formatter)
+
+# File handler (DEBUG and above, rotating)
+file_handler = RotatingFileHandler(
+    'parsec.log',
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5
+)
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(pathname)s:%(lineno)d'
+)
+file_handler.setFormatter(file_formatter)
+
+# Add handlers
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+```
+
+### JSON Structured Logging
+
+```python
+import logging
+import json
+from datetime import datetime
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_data = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno
+        }
+
+        # Add extra fields
+        if hasattr(record, 'model'):
+            log_data['model'] = record.model
+        if hasattr(record, 'prompt_length'):
+            log_data['prompt_length'] = record.prompt_length
+
+        return json.dumps(log_data)
+
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+logging.getLogger('parsec').addHandler(handler)
+```
+
+## Adapter Logging
+
+### OpenAI Adapter
+
+```python
+from parsec.models.adapters import OpenAIAdapter
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+adapter = OpenAIAdapter(api_key="key", model="gpt-4o-mini")
+result = await adapter.generate("Test prompt")
+
+# Logs:
+# INFO - Generating response from OpenAI model gpt-4o-mini
+# DEBUG - Success: 25 tokens
+```
+
+### Anthropic Adapter
+
+```python
+from parsec.models.adapters import AnthropicAdapter
+
+adapter = AnthropicAdapter(api_key="key", model="claude-3-5-sonnet-20241022")
+result = await adapter.generate("Test prompt")
+
+# Logs:
+# INFO - Generating response from Anthropic model claude-3-5-sonnet-20241022
+# DEBUG - Success: 30 tokens
+```
+
+### Gemini Adapter
+
+```python
+from parsec.models.adapters import GeminiAdapter
+
+adapter = GeminiAdapter(api_key="key", model="gemini-pro")
+result = await adapter.generate("Test prompt")
+
+# Logs:
+# INFO - Generating response from Gemini model gemini-pro
+# DEBUG - Success: 28 tokens
+```
+
+## Error Logging
+
+All adapters log errors with full stack traces:
+
+```python
+try:
+    result = await adapter.generate("Test")
+except Exception as e:
+    # Automatically logged with:
+    # ERROR - Generation failed: <error message>
+    # Traceback (most recent call last):
+    #   ...
+    pass
+```
+
+## Performance Monitoring
+
+### Tracking Latency
+
+Latency is automatically measured and returned in the response:
+
+```python
+result = await adapter.generate("Hello")
+print(f"Request took {result.latency_ms:.2f}ms")
+
+# Logs show timing automatically:
+# DEBUG - Success: 25 tokens (implicit: completed after X ms)
+```
+
+### Tracking Token Usage
+
+```python
+result = await adapter.generate("Hello")
+print(f"Used {result.tokens_used} tokens")
+
+# Logged at DEBUG level:
+# DEBUG - Success: 25 tokens
+```
+
+### Custom Metrics
+
+Add custom logging with extra fields:
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+logger.info("Custom metric", extra={
+    'tokens_per_second': tokens / (latency_ms / 1000),
+    'cost_estimate': tokens * 0.00002
+})
+```
+
+## Production Best Practices
+
+### 1. Use Environment-Based Configuration
+
+```python
+import os
+import logging
+
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+logging.basicConfig(level=getattr(logging, log_level))
+```
+
+### 2. Separate Log Files by Component
+
+```python
+# Adapter logs to adapters.log
+adapter_logger = logging.getLogger('parsec.models.adapters')
+adapter_handler = RotatingFileHandler('adapters.log')
+adapter_logger.addHandler(adapter_handler)
+
+# Validator logs to validators.log
+validator_logger = logging.getLogger('parsec.validators')
+validator_handler = RotatingFileHandler('validators.log')
+validator_logger.addHandler(validator_handler)
+```
+
+### 3. Filter Sensitive Data
+
+```python
+class SensitiveDataFilter(logging.Filter):
+    def filter(self, record):
+        # Remove API keys from logs
+        if hasattr(record, 'msg'):
+            record.msg = record.msg.replace(api_key, '***')
+        return True
+
+logger.addFilter(SensitiveDataFilter())
+```
+
+### 4. Integrate with Observability Tools
+
+#### DataDog
+
+```python
+from datadog import initialize, statsd
+
+initialize(statsd_host='localhost', statsd_port=8125)
+
+# Log metrics
+statsd.increment('parsec.api.calls')
+statsd.histogram('parsec.api.latency', result.latency_ms)
+statsd.histogram('parsec.api.tokens', result.tokens_used)
+```
+
+#### Sentry
+
+```python
+import sentry_sdk
+
+sentry_sdk.init(dsn="your-sentry-dsn")
+
+try:
+    result = await adapter.generate("Test")
+except Exception as e:
+    sentry_sdk.capture_exception(e)
+    raise
+```
+
+## Log Examples
+
+### Successful Request
+
+```
+2025-11-30 14:32:15,123 - parsec.models.adapters.openai_adapter - INFO - Generating response from OpenAI model gpt-4o-mini
+2025-11-30 14:32:16,456 - parsec.models.adapters.openai_adapter - DEBUG - Success: 25 tokens
+```
+
+### Failed Request
+
+```
+2025-11-30 14:35:22,789 - parsec.models.adapters.openai_adapter - INFO - Generating response from OpenAI model gpt-4o-mini
+2025-11-30 14:35:23,012 - parsec.models.adapters.openai_adapter - ERROR - Generation failed: Invalid API key
+Traceback (most recent call last):
+  File "/path/to/openai_adapter.py", line 47, in generate
+    response = await client.chat.completions.create(...)
+openai.error.AuthenticationError: Invalid API key
+```
+
+### With Extra Context
+
+```
+2025-11-30 14:40:30,555 - parsec.models.adapters.openai_adapter - INFO - Generating response from OpenAI model gpt-4o-mini [model=gpt-4o-mini, prompt_length=156]
+```
+
+## Custom Logger Integration
+
+### Use Your Own Logger
+
+```python
+from parsec.logging import get_logger
+
+# Override the default logger
+import logging
+my_logger = logging.getLogger('my_app.parsec')
+my_logger.setLevel(logging.DEBUG)
+
+# The get_logger function respects Python's logging hierarchy
+# So parsec.* loggers will inherit your configuration
+```
+
+## Troubleshooting
+
+### Not Seeing Logs?
+
+1. **Check log level**: Ensure it's set to `INFO` or `DEBUG`
+   ```python
+   logging.basicConfig(level=logging.DEBUG)
+   ```
+
+2. **Check logger name**: Make sure you're filtering the right logger
+   ```python
+   logging.getLogger('parsec').setLevel(logging.DEBUG)
+   ```
+
+3. **Check propagation**: Ensure log propagation isn't disabled
+   ```python
+   logging.getLogger('parsec').propagate = True
+   ```
+
+### Too Many Logs?
+
+Filter by component:
+
+```python
+# Only show errors from adapters
+logging.getLogger('parsec.models.adapters').setLevel(logging.ERROR)
+
+# But keep INFO for everything else
+logging.getLogger('parsec').setLevel(logging.INFO)
+```
+
+## Next Steps
+
+- Configure logging for your environment
+- Set up log rotation for production
+- Integrate with your observability stack
+- Add custom metrics tracking

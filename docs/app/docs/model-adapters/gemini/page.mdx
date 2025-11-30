@@ -5,4 +5,202 @@ import AdapterLogo from '@/components/AdapterLogo'
   <h1 className="text-4xl font-bold m-0">Gemini Adapter</h1>
 </div>
 
-Documentation for the Gemini adapter.
+The Gemini adapter provides integration with Google's Gemini API, supporting Gemini Pro, Gemini Ultra, and other models.
+
+## Features
+
+- ✅ **Native JSON Mode**: Supports Gemini's built-in JSON mode via `response_mime_type`
+- ✅ **Streaming Support**: Stream responses token-by-token for real-time applications
+- ✅ **Logging**: Comprehensive logging with request context and performance metrics
+- ✅ **Health Checks**: Built-in health check to verify API connectivity
+- ✅ **Token Tracking**: Automatic token usage tracking for cost monitoring
+
+## Installation
+
+```bash
+pip install google-generativeai
+```
+
+## Basic Usage
+
+```python
+from parsec.models.adapters import GeminiAdapter
+
+adapter = GeminiAdapter(
+    api_key="your-gemini-api-key",
+    model="gemini-pro"
+)
+
+# Generate a response
+result = await adapter.generate("What is the capital of France?")
+print(result.output)  # "Paris"
+print(result.tokens_used)  # e.g., 25
+print(result.latency_ms)  # e.g., 342.5
+```
+
+## Structured Output with Schema
+
+The Gemini adapter uses native JSON mode when a schema is provided:
+
+```python
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "email": {"type": "string"}
+    },
+    "required": ["name", "age"]
+}
+
+result = await adapter.generate(
+    "Extract: John Doe is 30 years old, john@example.com",
+    schema=schema,
+    temperature=0.7
+)
+
+print(result.output)  # '{"name": "John Doe", "age": 30, "email": "john@example.com"}'
+```
+
+## Streaming
+
+Stream responses for real-time applications:
+
+```python
+async for chunk in adapter.generate_stream(
+    "Write a short story about a robot",
+    temperature=0.8
+):
+    print(chunk, end="", flush=True)
+```
+
+## Configuration Options
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `api_key` | `str` | Required | Your Google Gemini API key |
+| `model` | `str` | Required | Model name (e.g., "gemini-pro", "gemini-ultra") |
+| `temperature` | `float` | 0.7 | Sampling temperature (0.0 to 2.0) |
+| `max_output_tokens` | `int` | None | Maximum tokens to generate |
+| `schema` | `dict` | None | JSON schema for structured output |
+
+## Logging
+
+The adapter includes comprehensive logging:
+
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# Logs will show:
+# INFO - Generating response from Gemini model gemini-pro
+# DEBUG - Success: 25 tokens
+```
+
+## Health Check
+
+Verify API connectivity:
+
+```python
+is_healthy = await adapter.health_check()
+if is_healthy:
+    print("Gemini API is accessible")
+```
+
+## Supported Models
+
+- `gemini-pro` - Best for text tasks
+- `gemini-pro-vision` - Supports multimodal input (text + images)
+- `gemini-ultra` - Most capable model (when available)
+- `gemini-1.5-pro` - Latest model with extended context
+
+## Error Handling
+
+```python
+try:
+    result = await adapter.generate("Hello")
+except Exception as e:
+    # Logs automatically include full stack trace
+    print(f"Generation failed: {e}")
+```
+
+## Important Notes
+
+### JSON Mode
+When a schema is provided, the Gemini adapter:
+1. Sets `response_mime_type` to `"application/json"`
+2. Includes the schema in the generation config
+3. Gemini natively enforces the JSON structure
+
+### Token Counting
+The adapter reports token usage when available:
+- `prompt_token_count` - Input tokens
+- `candidates_token_count` - Output tokens
+- Total reported in `tokens_used`
+
+### Safety Settings
+Gemini has built-in safety filters. If content is blocked, the API will raise an exception that gets logged and re-raised.
+
+## Example with Enforcement Engine
+
+```python
+from parsec.enforcement import EnforcementEngine
+from parsec.validators import JSONValidator
+
+validator = JSONValidator()
+engine = EnforcementEngine(adapter, validator, max_retries=3)
+
+schema = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "key_points": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["summary", "key_points"]
+}
+
+result = await engine.enforce(
+    "Summarize: Python is a programming language. It's easy to learn and powerful.",
+    schema
+)
+
+print(result.parsed_output)
+# {
+#   "summary": "Python is an easy-to-learn yet powerful programming language.",
+#   "key_points": ["Easy to learn", "Powerful", "Programming language"]
+# }
+```
+
+## Streaming with JSON
+
+Even with JSON mode enabled, you can stream responses:
+
+```python
+schema = {"type": "object", "properties": {"text": {"type": "string"}}}
+
+full_response = ""
+async for chunk in adapter.generate_stream(
+    "Generate a greeting",
+    schema=schema
+):
+    full_response += chunk
+    print(chunk, end="", flush=True)
+
+# Parse the complete JSON
+import json
+parsed = json.loads(full_response)
+print(parsed)  # {"text": "Hello! How can I help you today?"}
+```
+
+## Comparison with Other Adapters
+
+| Feature | Gemini | OpenAI | Anthropic |
+|---------|--------|--------|-----------|
+| Native JSON mode | ✅ Yes (`response_mime_type`) | ✅ Yes (`response_format`) | ❌ No (prompt-based) |
+| Streaming | ✅ Yes | ✅ Yes | ✅ Yes |
+| Token tracking | ✅ Yes | ✅ Yes | ✅ Yes |
+| Max tokens required | ❌ No | ❌ No | ✅ Yes |
+| Multimodal | ✅ Yes (vision models) | ✅ Yes (GPT-4V) | ✅ Yes (Claude 3) |

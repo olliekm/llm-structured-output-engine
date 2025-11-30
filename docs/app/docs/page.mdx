@@ -1,12 +1,16 @@
 # Welcome
 
-Welcome to the **parsec** documentation
+Welcome to the **parsec** documentation - a lightweight orchestration toolkit for generating, validating, and enforcing structured output from large language models.
 
 Created by [Oliver Kwun-Morfitt](https://olliekm.com)
 
 ## Quick Example
 
 ```python
+from parsec.models.adapters import OpenAIAdapter
+from parsec.validators import JSONValidator
+from parsec.enforcement import EnforcementEngine
+
 adapter = OpenAIAdapter(
     api_key="your-key-here",
     model="gpt-4o-mini"
@@ -31,21 +35,71 @@ schema = {
     "required": ["name", "age", "email"]
 }
 
-# Enforce
+# Enforce structured output
 result = await engine.enforce(
     prompt="Extract person info: John is 30 years old, john@example.com",
     schema=schema
 )
+
+print(result.parsed_output)
+# {"name": "John", "age": 30, "email": "john@example.com"}
 ```
 
 ## Features
 
-- JSON schema and Pydantic validation
-- Automatic secham repair
-- *Coming soon: Decorator for extending functionality*
+### Multi-Provider Support
+- ✅ **OpenAI** - GPT-4, GPT-4o, GPT-3.5-turbo
+- ✅ **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus
+- ✅ **Gemini** - Gemini Pro, Gemini Ultra
+
+### Validation & Enforcement
+- ✅ **JSON Schema Validation** - Validate against any JSON schema
+- ✅ **Pydantic Validation** - Type-safe validation with Pydantic models
+- ✅ **Automatic Repair** - Heuristic-based JSON repair for common issues
+- ✅ **Retry Logic** - Progressive repair with feedback to the model
+
+### Performance & Monitoring
+- ✅ **Streaming Support** - Real-time token streaming for all adapters
+- ✅ **Comprehensive Logging** - Request context, metrics, and error tracking
+- ✅ **Token Tracking** - Automatic usage monitoring for cost control
+- ✅ **Health Checks** - Built-in API connectivity verification
+
+### Developer Experience
+- ✅ **Provider-Agnostic Interface** - Consistent API across all providers
+- ✅ **Async/Await** - Full async support for high-performance applications
+- ✅ **Extensive Testing** - Comprehensive test suite with mocking examples
+- ✅ **Type Safety** - Full type hints throughout the codebase
+
+## Supported Models
+
+| Provider | Models | Native JSON | Streaming |
+|----------|--------|-------------|-----------|
+| **OpenAI** | GPT-4o, GPT-4, GPT-3.5-turbo | ✅ Yes | ✅ Yes |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus | ❌ Prompt-based | ✅ Yes |
+| **Gemini** | Gemini Pro, Gemini Ultra | ✅ Yes | ✅ Yes |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                Enforcement Engine                    │
+│  (Orchestrates generation, validation, & retry)     │
+└──────────────┬──────────────────────┬───────────────┘
+               │                      │
+       ┌───────▼────────┐     ┌──────▼──────┐
+       │   Validators   │     │   Adapters  │
+       │                │     │             │
+       │  • JSON        │     │  • OpenAI   │
+       │  • Pydantic    │     │  • Anthropic│
+       │                │     │  • Gemini   │
+       └────────────────┘     └─────────────┘
+```
 
 ## Next Steps
 
-- [Installation](./installation)
-- [Quick Start](./quickstart)
-- [API Reference](./api)
+- [Get Started](./get-started) - Installation and setup
+- [Model Adapters](./model-adapters) - OpenAI, Anthropic, and Gemini integration
+- [Testing](./testing) - Comprehensive testing guide with examples
+- [Logging](./logging) - Monitoring and debugging with structured logs
+- [Validators](./validators) - JSON schema and Pydantic validation
+- [Engines](./engines) - Enforcement and streaming engines
