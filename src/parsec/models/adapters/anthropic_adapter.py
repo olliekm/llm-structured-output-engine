@@ -1,10 +1,15 @@
 import anthropic
 from parsec.core import BaseLLMAdapter, GenerationResponse, ModelProviders
 from typing import AsyncIterator
+from parsec.logging import get_logger
 import time
 
 class AnthropicAdapter(BaseLLMAdapter):
     """Adapter for Anthropic's API with custom configurations."""
+
+    def __init__(self, api_key, model: str, **kwargs):
+        super().__init__(api_key, model, **kwargs)
+        self.logger = get_logger(__name__)
 
     def _initialize_client(self):
         return anthropic.Anthropic(api_key=self.api_key)
@@ -25,6 +30,11 @@ class AnthropicAdapter(BaseLLMAdapter):
                 max_tokens = 4096
             start = time.perf_counter()
 
+            self.logger.info(f"Generating response from Anthropic model {self.model}", extra={
+                "model": self.model,
+                "prompt_length": len(prompt),
+            })
+            
             message_params = {
                 "model": self.model,
                 "temperature": temperature,
@@ -49,23 +59,27 @@ class AnthropicAdapter(BaseLLMAdapter):
 
             client = self.get_client()
 
-            response = await client.messages.create(**message_params)
+            try:
+                response = await client.messages.create(**message_params)
 
-            # Extract text from content blocks
-            output = ""
-            for block in response.content:
-                if block.type == "text":
-                    output += block.text
+                # Extract text from content blocks
+                output = ""
+                for block in response.content:
+                    if block.type == "text":
+                        output += block.text
 
-            latency = (time.perf_counter() - start) * 1000
-
-            return GenerationResponse(
-                output=output,
-                provider=self.provider.value,
-                model=self.model,
-                tokens_used=response.usage.input_tokens + response.usage.output_tokens,
-                latency_ms=latency
-            )
+                latency = (time.perf_counter() - start) * 1000
+                self.logger.debug(f"Success: {response.usage.input_tokens + response.usage.output_tokens} tokens")
+                return GenerationResponse(
+                    output=output,
+                    provider=self.provider.value,
+                    model=self.model,
+                    tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+                    latency_ms=latency
+                )
+            except Exception as e:
+                self.logger.error(f"Generation failed: {str(e)}", exc_info=True)
+                raise
 
     async def generate_stream(
         self,
