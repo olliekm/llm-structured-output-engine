@@ -1,12 +1,17 @@
 import google.generativeai as genai
 from parsec.core import BaseLLMAdapter, GenerationResponse, ModelProviders
 from typing import AsyncIterator
+from parsec.logging import get_logger
 import time
 import json
 
 
 class GeminiAdapter(BaseLLMAdapter):
     """Adapter for Google's Gemini API."""
+
+    def __init__(self, api_key, model, **kwargs):
+        super().__init__(api_key, model, **kwargs)
+        self.logger = get_logger(__name__)
 
     def _initialize_client(self):
         """Initialize the Gemini client with API key."""
@@ -49,6 +54,10 @@ class GeminiAdapter(BaseLLMAdapter):
         start = time.perf_counter()
         client = self.get_client()
 
+        self.logger.info(f"Generating response from Gemini model {self.model}", extra={
+            "model": self.model,
+            "prompt_length": len(prompt),
+        })
         # Configure generation settings
         generation_config = {
             "temperature": temperature,
@@ -69,29 +78,33 @@ class GeminiAdapter(BaseLLMAdapter):
 
         generation_config.update(kwargs)
 
-        # Generate response
-        response = await client.generate_content_async(
-            prompt,
-            generation_config=generation_config
-        )
-
-        latency = (time.perf_counter() - start) * 1000
-
-        # Extract token usage (Gemini provides token counts)
-        tokens_used = 0
-        if hasattr(response, 'usage_metadata'):
-            tokens_used = (
-                response.usage_metadata.prompt_token_count +
-                response.usage_metadata.candidates_token_count
+        try:
+            # Generate response
+            response = await client.generate_content_async(
+                prompt,
+                generation_config=generation_config
             )
 
-        return GenerationResponse(
-            output=response.text,
-            provider=self.provider.value,
-            model=self.model,
-            tokens_used=tokens_used,
-            latency_ms=latency
-        )
+            latency = (time.perf_counter() - start) * 1000
+
+            # Extract token usage (Gemini provides token counts)
+            tokens_used = 0
+            if hasattr(response, 'usage_metadata'):
+                tokens_used = (
+                    response.usage_metadata.prompt_token_count +
+                    response.usage_metadata.candidates_token_count
+                )
+            self.logger.debug(f"Success: {tokens_used} tokens")
+            return GenerationResponse(
+                output=response.text,
+                provider=self.provider.value,
+                model=self.model,
+                tokens_used=tokens_used,
+                latency_ms=latency
+            )
+        except Exception as e:
+            self.logger.error(f"Generation failed: {str(e)}", exc_info=True)
+            raise
 
     async def generate_stream(
         self,
