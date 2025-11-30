@@ -1,26 +1,74 @@
 # Getting Started
 
-Install the package:
+Get structured output from any LLM in three steps.
+
+## Install
 
 ```bash
-pip install parsec
+pip install parsec-llm
 ```
 
-**parsec** offers different adapters for model providers. This collection of adapters will grow as the project matures.
+## Choose Your Provider
 
-Import the adapter for the model provider:
+Pick an adapter for your preferred LLM provider:
 
 ```python
-from parsec import OpenAIAdapter
+# OpenAI
+from parsec.models.adapters import OpenAIAdapter
+adapter = OpenAIAdapter(api_key="your-key", model="gpt-4o-mini")
+
+# Anthropic
+from parsec.models.adapters import AnthropicAdapter
+adapter = AnthropicAdapter(api_key="your-key", model="claude-3-5-sonnet-20241022")
+
+# Gemini
+from parsec.models.adapters import GeminiAdapter
+adapter = GeminiAdapter(api_key="your-key", model="gemini-pro")
 ```
 
-initialize the adapter:
+## Enforce Structure
+
+Define your schema and get validated output:
 
 ```python
-adapter = OpenAIAdapter(
-    api_key="your-key-here",
-    model="gpt-4o-mini"
+from parsec.validators import JSONValidator
+from parsec.enforcement import EnforcementEngine
+
+# Set up enforcement
+validator = JSONValidator()
+engine = EnforcementEngine(adapter, validator, max_retries=3)
+
+# Define what you want
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "email": {"type": "string"}
+    },
+    "required": ["name", "email"]
+}
+
+# Get structured output
+result = await engine.enforce(
+    "Extract: John Doe is 30, contact at john@example.com",
+    schema
 )
+
+print(result.parsed_output)
+# {"name": "John Doe", "age": 30, "email": "john@example.com"}
 ```
 
-## TODO COMEBACK TO FINISH THIS PART
+## What Just Happened?
+
+1. **Enforcement Engine** sent your prompt to the LLM
+2. **Validator** checked the response against your schema
+3. If invalid, the engine **automatically retried** with feedback
+4. You got **guaranteed valid output** matching your schema
+
+## Next Steps
+
+- [Model Adapters](./model-adapters) - Learn about OpenAI, Anthropic, and Gemini adapters
+- [Validators](./validators) - JSON schema and Pydantic validation options
+- [Testing](./testing) - Write tests for your structured outputs
+- [Logging](./logging) - Monitor performance and debug issues

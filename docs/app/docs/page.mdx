@@ -1,105 +1,106 @@
-# Welcome
+# Welcome to Parsec
 
-Welcome to the **parsec** documentation - a lightweight orchestration toolkit for generating, validating, and enforcing structured output from large language models.
+**Parsec** makes it easy to get structured, reliable output from large language models.
+
+Whether you're working with OpenAI, Anthropic, or Google's Gemini, parsec gives you a simple way to ensure the AI returns exactly the data format you need—every time.
 
 Created by [Oliver Kwun-Morfitt](https://olliekm.com)
 
-## Quick Example
+## What is Parsec?
+
+Parsec is a lightweight toolkit that helps you:
+- Get predictable, structured responses from any major LLM provider
+- Validate responses against your requirements automatically
+- Fix common formatting issues without manual intervention
+- Switch between AI providers without rewriting code
+
+Think of it as a safety net for AI outputs. Instead of hoping the model returns valid JSON or the right data structure, parsec makes sure of it.
+
+## Why Use Parsec?
+
+**For developers building with AI:**
+- 🎯 Stop fighting with inconsistent LLM outputs
+- 🔄 Easily switch between OpenAI, Claude, and Gemini
+- ⚡ Get started in minutes with a simple, intuitive API
+- 🛡️ Validate and repair responses automatically
+
+**For production applications:**
+- 📊 Monitor token usage and performance
+- 🔍 Debug issues with comprehensive logging
+- ✅ Trust your AI responses are valid
+- 📈 Scale confidently with async support
+
+## Quick Peek
 
 ```python
-from parsec.models.adapters import OpenAIAdapter
-from parsec.validators import JSONValidator
-from parsec.enforcement import EnforcementEngine
-
-adapter = OpenAIAdapter(
-    api_key="your-key-here",
-    model="gpt-4o-mini"
-)
-
-validator = JSONValidator()
-
-engine = EnforcementEngine(
-    adapter=adapter,
-    validator=validator,
-    max_retries=3
-)
-
-# Define schema
+# Define what you want
 schema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
-        "age": {"type": "number"},
-        "email": {"type": "string"}
-    },
-    "required": ["name", "age", "email"]
+        "age": {"type": "number"}
+    }
 }
 
-# Enforce structured output
+# Get it from any LLM
 result = await engine.enforce(
-    prompt="Extract person info: John is 30 years old, john@example.com",
-    schema=schema
+    "Extract: John is 30 years old",
+    schema
 )
 
+# Use reliable, structured data
 print(result.parsed_output)
-# {"name": "John", "age": 30, "email": "john@example.com"}
+# {"name": "John", "age": 30}
 ```
 
-## Features
+That's it. No parsing, no error handling, no hoping it works.
 
-### Multi-Provider Support
-- ✅ **OpenAI** - GPT-4, GPT-4o, GPT-3.5-turbo
-- ✅ **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus
-- ✅ **Gemini** - Gemini Pro, Gemini Ultra
+## What Can You Build?
 
-### Validation & Enforcement
-- ✅ **JSON Schema Validation** - Validate against any JSON schema
-- ✅ **Pydantic Validation** - Type-safe validation with Pydantic models
-- ✅ **Automatic Repair** - Heuristic-based JSON repair for common issues
-- ✅ **Retry Logic** - Progressive repair with feedback to the model
+Parsec is perfect for:
+- **Data extraction** - Pull structured info from unstructured text
+- **API responses** - Ensure LLMs return valid JSON for your endpoints
+- **Form filling** - Extract user input into structured formats
+- **Content generation** - Get blog posts, summaries, or reports in consistent formats
+- **Classification tasks** - Get predictable categories and labels
+- **Multi-step workflows** - Chain reliable outputs together
 
-### Performance & Monitoring
-- ✅ **Streaming Support** - Real-time token streaming for all adapters
-- ✅ **Comprehensive Logging** - Request context, metrics, and error tracking
-- ✅ **Token Tracking** - Automatic usage monitoring for cost control
-- ✅ **Health Checks** - Built-in API connectivity verification
+## Choose Your Path
 
-### Developer Experience
-- ✅ **Provider-Agnostic Interface** - Consistent API across all providers
-- ✅ **Async/Await** - Full async support for high-performance applications
-- ✅ **Extensive Testing** - Comprehensive test suite with mocking examples
-- ✅ **Type Safety** - Full type hints throughout the codebase
+### New to Parsec?
+Start here to get up and running:
+- [Get Started](./get-started) - Install and create your first structured output
 
-## Supported Models
-
-| Provider | Models | Native JSON | Streaming |
-|----------|--------|-------------|-----------|
-| **OpenAI** | GPT-4o, GPT-4, GPT-3.5-turbo | ✅ Yes | ✅ Yes |
-| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus | ❌ Prompt-based | ✅ Yes |
-| **Gemini** | Gemini Pro, Gemini Ultra | ✅ Yes | ✅ Yes |
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                Enforcement Engine                    │
-│  (Orchestrates generation, validation, & retry)     │
-└──────────────┬──────────────────────┬───────────────┘
-               │                      │
-       ┌───────▼────────┐     ┌──────▼──────┐
-       │   Validators   │     │   Adapters  │
-       │                │     │             │
-       │  • JSON        │     │  • OpenAI   │
-       │  • Pydantic    │     │  • Anthropic│
-       │                │     │  • Gemini   │
-       └────────────────┘     └─────────────┘
-```
-
-## Next Steps
-
-- [Get Started](./get-started) - Installation and setup
+### Working with AI Providers?
+Learn about our adapters:
 - [Model Adapters](./model-adapters) - OpenAI, Anthropic, and Gemini integration
-- [Testing](./testing) - Comprehensive testing guide with examples
-- [Logging](./logging) - Monitoring and debugging with structured logs
+
+### Building for Production?
+Essential guides for deployment:
+- [Logging](./logging) - Monitor performance and debug issues
+- [Testing](./testing) - Write reliable tests with mocking examples
+
+### Deep Dives
+Explore the details:
 - [Validators](./validators) - JSON schema and Pydantic validation
-- [Engines](./engines) - Enforcement and streaming engines
+- [Engines](./engines) - Enforcement and streaming
+
+## Supported Providers
+
+| Provider | What You Get |
+|----------|-------------|
+| **OpenAI** | GPT-4, GPT-4o, GPT-3.5-turbo with native JSON mode |
+| **Anthropic** | Claude 3.5 Sonnet and Claude 3 Opus |
+| **Gemini** | Google's Gemini Pro and Ultra models |
+
+All providers work with the same simple API—switch anytime without changing your code.
+
+## Community & Support
+
+- **Documentation** - You're reading it! Explore the guides in the sidebar
+- **Issues** - Found a bug? [Report it on GitHub](https://github.com/olliekm/parsec/issues)
+- **Examples** - Check the `examples/` folder in the repo
+
+---
+
+Ready to build something reliable? [Let's get started →](./get-started)
