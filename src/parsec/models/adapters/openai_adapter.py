@@ -1,11 +1,16 @@
 from openai import AsyncOpenAI
 from parsec.core import BaseLLMAdapter, GenerationResponse, ModelProviders
 from typing import AsyncIterator
+from parsec.logging import get_logger
 import time
 import json
 
 class OpenAIAdapter(BaseLLMAdapter):
     """OpenAI implementation"""
+
+    def __init__(self, api_key, model: str, **kwargs):
+        super().__init__(api_key, model, **kwargs)
+        self.logger = get_logger(__name__)
 
     def _initialize_client(self):
         return AsyncOpenAI(api_key=self.api_key)
@@ -25,6 +30,11 @@ class OpenAIAdapter(BaseLLMAdapter):
         client = self.get_client()
         start = time.perf_counter()
 
+        self.logger.info(f"Generating response from OpenAI model {self.model}", extra={
+            "model": self.model,
+            "prompt_length": len(prompt),
+        })
+
         messages = [{"role": "user", "content": prompt}]
 
         # Use JSON mode if schema provided
@@ -33,25 +43,30 @@ class OpenAIAdapter(BaseLLMAdapter):
             extra_args["response_format"] = {"type": "json_object"}
             # Add schema to prompt
             messages[0]["content"] = f"{prompt}\n\nReturn valid JSON matching this schema: {json.dumps(schema)}"
+        try:
+            response = await client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **extra_args,
+                **kwargs
+            )
+            latency = (time.perf_counter() - start) * 1000
+            self.logger.debug(f"Success: {response.usage.total_tokens} tokens")
 
-        response = await client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **extra_args,
-            **kwargs
-        )
+            return GenerationResponse(
+                output=response.choices[0].message.content,
+                provider=self.provider.value,
+                model=self.model,
+                tokens_used=response.usage.total_tokens,
+                latency_ms=latency
+            )
+        except Exception as e:
+            self.logger.error(f"Generation failed: {str(e)}", exc_info=True)
+            raise
 
-        latency = (time.perf_counter() - start) * 1000
 
-        return GenerationResponse(
-            output=response.choices[0].message.content,
-            provider=self.provider.value,
-            model=self.model,
-            tokens_used=response.usage.total_tokens,
-            latency_ms=latency
-        )
 
     async def generate_stream(
         self,
