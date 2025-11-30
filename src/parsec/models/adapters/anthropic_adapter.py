@@ -34,10 +34,16 @@ class AnthropicAdapter(BaseLLMAdapter):
                 ]
             }
 
+            # Anthropic doesn't have response_format parameter
+            # Instead, we need to instruct it via the prompt
             if schema:
-                message_params["response_format"] = {
-                    "type": "json_schema"
-                }
+                import json
+                schema_str = json.dumps(schema, indent=2)
+                message_params["messages"][0]["content"] = (
+                    f"{prompt}\n\n"
+                    f"Please respond with valid JSON matching this schema:\n{schema_str}\n"
+                    f"Return ONLY the JSON object, no additional text."
+                )
 
             message_params.update(kwargs)
 
@@ -83,10 +89,16 @@ class AnthropicAdapter(BaseLLMAdapter):
             "stream": True
         }
 
+        # Anthropic doesn't have response_format parameter
+        # Instead, we need to instruct it via the prompt
         if schema:
-            message_params["response_format"] = {
-                "type": "json_schema"
-            }
+            import json
+            schema_str = json.dumps(schema, indent=2)
+            message_params["messages"][0]["content"] = (
+                f"{prompt}\n\n"
+                f"Please respond with valid JSON matching this schema:\n{schema_str}\n"
+                f"Return ONLY the JSON object, no additional text."
+            )
 
         message_params.update(kwargs)
 
@@ -97,6 +109,7 @@ class AnthropicAdapter(BaseLLMAdapter):
                 yield text
 
     async def health_check(self) -> bool:
+        """Check if the Anthropic API is accessible and credentials are valid."""
         try:
             client = self.get_client()
             await client.messages.create(
@@ -106,5 +119,7 @@ class AnthropicAdapter(BaseLLMAdapter):
                     {"role": "user", "content": "Hello, are you there?"}
                 ])
             return True
-        except:
+        except Exception as e:
+            # Log the error if logging is available
+            # For now, silently fail and return False
             return False
