@@ -1,5 +1,9 @@
+from pathlib import Path
+import csv
+import json
 from .schemas import CollectedExample
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+
 
 class DatasetCollector:
     """Data collection for gathering training data"""
@@ -16,10 +20,10 @@ class DatasetCollector:
         self.filters = filters
         self.auto_split = auto_split
         self.buffer_size = buffer_size
+        self.examples_written = 0
         self.buffer = []
 
-    def collect(self, example_data: Dict[str, Any]):
-        self.buffer.append(example_data)
+    def collect(self, example_data: Dict[str, Any]) -> None:
         example = CollectedExample(**example_data)
 
         if not self._should_save(example):
@@ -46,7 +50,7 @@ class DatasetCollector:
         
         return True
     
-    async def _write_batch(self):
+    def _write_batch(self) -> None:
         if not self.buffer:
             return
         
@@ -65,12 +69,90 @@ class DatasetCollector:
         self.examples_written += len(self.buffer)
         self.buffer.clear()
 
-    async def close(self):
+    def _write_jsonl(self, path: Path) -> None:
+        """Append examples to JSONL file"""
+        mode = 'a' if path.exists() else 'w'
+        with open(path, mode) as f:
+            for example in self.buffer:
+                # Convert to dict and write as JSON line
+                json_line = example.model_dump_json()
+                f.write(json_line + '\n')
+
+    def _write_json(self, path: Path) -> None:
+        """Write/update JSON file with all examples"""
+        # Load existing examples if file exists
+        existing = []
+        if path.exists():
+            with open(path, 'r') as f:
+                existing = json.load(f)
+        
+        # Add new examples
+        new_examples = [example.model_dump() for example in self.buffer]
+        all_examples = existing + new_examples
+        
+        # Write back
+        with open(path, 'w') as f:
+            json.dump(all_examples, f, indent=2, default=str)
+
+    def _write_csv(self, path: Path) -> None:
+        """Append examples to CSV file"""
+        # Flatten the examples for CSV
+        rows = []
+        for example in self.buffer:
+            row = {
+                'request_id': example.request_id,
+                'timestamp': example.timestamp.isoformat(),
+                'prompt': example.prompt,
+                'schema': json.dumps(example.schema),
+                'response': example.response,
+                'parsed_output': json.dumps(example.parsed_output) if example.parsed_output else '',
+                'success': example.success,
+                'validation_errors': json.dumps(example.validation_errors),
+                'metadata': json.dumps(example.metadata)
+            }
+            rows.append(row)
+        
+        # Write (append mode if exists)
+        mode = 'a' if path.exists() else 'w'
+        write_header = not path.exists()
+        
+        with open(path, mode, newline='') as f:
+            if rows:
+                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                if write_header:
+                    writer.writeheader()
+                writer.writerows(rows)
+
+    def _read_all_examples(self) -> List[CollectedExample]:
+        """Read all examples from current file"""
+        path = Path(self.output_path)
+        if not path.exists():
+            return []
+        
+        examples = []
+        
+        if self.format == "jsonl":
+            with open(path, 'r') as f:
+                for line in f:
+                    data = json.loads(line)
+                    examples.append(CollectedExample(**data))
+        
+        elif self.format == "json":
+            with open(path, 'r') as f:
+                data = json.load(f)
+                for item in data:
+                    examples.append(CollectedExample(**item))
+        
+        # CSV reading is more complex, skip for now
+        
+        return examples
+
+    def close(self):
         self._write_batch()
-        print(f"Dataset collection complete: {self.examples_written} exmaples written to {self.output_path}")
+        print(f"Dataset collection complete: {self.examples_written} examples written to {self.output_path}")
 
     def export(self, output_path: str, format: str):
-        examples = self._read_all_exmaples()
+        examples = self._read_all_examples()
 
         old_buffer = self.buffer
         old_path = self.output_path
