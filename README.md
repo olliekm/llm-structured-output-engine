@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-Lightweight orchestration toolkit to generate, validate, repair and enforce
+⚡ Lightweight orchestration toolkit to generate, validate, repair and enforce
 structured output from large language models (LLMs). The project provides a
 provider-agnostic adapter interface, validators (JSON/pydantic), and an
 enforcement engine that retries and repairs LLM output until it conforms to a
