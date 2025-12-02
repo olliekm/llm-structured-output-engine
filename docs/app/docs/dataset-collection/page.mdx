@@ -1,0 +1,329 @@
+# Dataset Collection
+
+Automatically collect training data from your LLM interactions for fine-tuning and analysis.
+
+## Overview
+
+The `DatasetCollector` captures prompt-response pairs during inference, making it easy to build datasets for:
+- Fine-tuning models on your specific use cases
+- Analyzing model performance over time
+- Quality assurance and testing
+- Training custom validators
+
+## Quick Start
+
+```python
+from parsec.training import DatasetCollector
+from parsec.enforcement import EnforcementEngine
+from parsec.validators import JSONValidator
+from parsec.models.adapters import OpenAIAdapter
+
+# Set up your adapter and validator
+adapter = OpenAIAdapter(api_key="your-key", model="gpt-4o-mini")
+validator = JSONValidator()
+
+# Create a dataset collector
+collector = DatasetCollector(
+    output_path="./datasets/extraction_data.jsonl",
+    format="jsonl"
+)
+
+# Pass collector to EnforcementEngine
+engine = EnforcementEngine(adapter, validator, collector=collector)
+
+# Use normally - data is collected automatically
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string"}
+    }
+}
+
+result = await engine.enforce(
+    "Extract: John Doe, john@example.com",
+    schema
+)
+
+# Close collector when done
+collector.close()
+```
+
+## Configuration
+
+### Basic Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `output_path` | `str` | Required | File path for dataset output |
+| `format` | `str` | `"jsonl"` | Output format: `"jsonl"`, `"json"`, or `"csv"` |
+| `buffer_size` | `int` | `10` | Number of examples to buffer before writing |
+
+### Export Formats
+
+#### JSONL (Recommended)
+Newline-delimited JSON - one example per line. Best for streaming and large datasets.
+
+```python
+collector = DatasetCollector(
+    output_path="./data/examples.jsonl",
+    format="jsonl"
+)
+```
+
+#### JSON
+Single JSON array with all examples. Easy to read, but loads entire file into memory.
+
+```python
+collector = DatasetCollector(
+    output_path="./data/examples.json",
+    format="json"
+)
+```
+
+#### CSV
+Flattened format with JSON fields as strings. Good for spreadsheet analysis.
+
+```python
+collector = DatasetCollector(
+    output_path="./data/examples.csv",
+    format="csv"
+)
+```
+
+## Quality Filtering
+
+Filter which examples get saved to your dataset:
+
+### Only Successful Examples
+
+```python
+collector = DatasetCollector(
+    output_path="./data/clean_examples.jsonl",
+    filters={"only_successful": True}
+)
+# Only collects examples that passed validation
+```
+
+### Limit Retry Count
+
+```python
+collector = DatasetCollector(
+    output_path="./data/low_retry_examples.jsonl",
+    filters={"max_retries": 1}
+)
+# Only collects examples that succeeded within 1 retry
+```
+
+### Combined Filters
+
+```python
+collector = DatasetCollector(
+    output_path="./data/high_quality.jsonl",
+    filters={
+        "only_successful": True,
+        "max_retries": 2
+    }
+)
+```
+
+## Train/Val/Test Splitting
+
+Automatically split collected data into training, validation, and test sets:
+
+```python
+collector = DatasetCollector(
+    output_path="./data/dataset.jsonl",
+    auto_split=True,
+    split_ratios={"train": 0.8, "val": 0.1, "test": 0.1}
+)
+
+# After collection, you'll have:
+# - dataset_train.jsonl (80% of data)
+# - dataset_val.jsonl (10% of data)
+# - dataset_test.jsonl (10% of data)
+```
+
+Split ratios must sum to 1.0. Examples are randomly assigned to splits.
+
+## Versioning
+
+Track different iterations of your dataset:
+
+### Explicit Version
+
+```python
+collector = DatasetCollector(
+    output_path="./data/dataset.jsonl",
+    versioning=True,
+    version="2"
+)
+# Creates: dataset_v2.jsonl
+```
+
+### Auto-Increment
+
+```python
+collector = DatasetCollector(
+    output_path="./data/dataset.jsonl",
+    versioning=True  # No version specified
+)
+# Finds existing versions and increments
+# If dataset_v1.jsonl and dataset_v2.jsonl exist, creates dataset_v3.jsonl
+```
+
+### Versioning + Splitting
+
+```python
+collector = DatasetCollector(
+    output_path="./data/dataset.jsonl",
+    versioning=True,
+    version="3",
+    auto_split=True
+)
+# Creates:
+# - dataset_v3_train.jsonl
+# - dataset_v3_val.jsonl
+# - dataset_v3_test.jsonl
+```
+
+## Data Schema
+
+Each collected example contains:
+
+```json
+{
+  "request_id": "uuid-string",
+  "timestamp": "2025-12-01T12:00:00",
+  "prompt": "Extract: John Doe, john@example.com",
+  "schema": {...},
+  "response": "{\"name\": \"John Doe\", \"email\": \"john@example.com\"}",
+  "parsed_output": {"name": "John Doe", "email": "john@example.com"},
+  "success": true,
+  "validation_errors": [],
+  "metadata": {
+    "retry_count": 0,
+    "tokens_used": 150,
+    "latency_ms": 342.5
+  }
+}
+```
+
+## Complete Example
+
+```python
+from parsec.training import DatasetCollector
+from parsec.enforcement import EnforcementEngine
+from parsec.validators import JSONValidator
+from parsec.models.adapters import AnthropicAdapter
+
+# Initialize with all features
+collector = DatasetCollector(
+    output_path="./datasets/sentiment_analysis.jsonl",
+    format="jsonl",
+    buffer_size=20,
+    filters={
+        "only_successful": True,
+        "max_retries": 2
+    },
+    auto_split=True,
+    split_ratios={"train": 0.7, "val": 0.15, "test": 0.15},
+    versioning=True,
+    version="1"
+)
+
+adapter = AnthropicAdapter(
+    api_key="your-key",
+    model="claude-3-5-sonnet-20241022"
+)
+validator = JSONValidator()
+engine = EnforcementEngine(adapter, validator, collector=collector)
+
+schema = {
+    "type": "object",
+    "properties": {
+        "sentiment": {"enum": ["positive", "negative", "neutral"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+    },
+    "required": ["sentiment", "confidence"]
+}
+
+# Collect data from your workflow
+texts = [
+    "This product is amazing!",
+    "Worst purchase ever.",
+    "It's okay, nothing special."
+]
+
+for text in texts:
+    result = await engine.enforce(text, schema)
+    print(f"Sentiment: {result.data['sentiment']}")
+
+# Flush remaining buffer and close
+collector.close()
+
+# Output:
+# Dataset collection complete: 3 examples written (split into train/val/test)
+```
+
+## Export Between Formats
+
+Convert an existing dataset to a different format:
+
+```python
+collector = DatasetCollector(
+    output_path="./data/original.jsonl",
+    format="jsonl"
+)
+
+# Convert to CSV
+collector.export(
+    output_path="./data/exported.csv",
+    format="csv"
+)
+```
+
+## Best Practices
+
+1. **Use JSONL for large datasets** - More memory efficient than JSON
+2. **Enable auto-split early** - Easier than splitting later
+3. **Filter at collection time** - More efficient than filtering after
+4. **Version your datasets** - Track improvements across iterations
+5. **Set appropriate buffer size** - Balance write frequency vs. memory
+6. **Always call close()** - Ensures final buffer is written
+
+## Integration with Fine-Tuning
+
+The JSONL format works directly with most fine-tuning APIs:
+
+### OpenAI Format
+```python
+# Collect data
+collector = DatasetCollector(
+    output_path="./data/openai_finetune.jsonl",
+    format="jsonl"
+)
+# Use with: openai api fine_tunes.create -t ./data/openai_finetune.jsonl
+```
+
+### Anthropic/Custom Format
+```python
+# Read and transform
+from parsec.training.schemas import CollectedExample
+import json
+
+with open("./data/dataset.jsonl") as f:
+    for line in f:
+        example = CollectedExample(**json.loads(line))
+        # Transform to your format
+        transformed = {
+            "prompt": example.prompt,
+            "completion": example.response
+        }
+```
+
+## Next Steps
+
+- [Testing](/docs/testing) - Test your data collection pipeline
+- [Logging](/docs/logging) - Monitor collection performance
+- [Model Adapters](/docs/model-adapters) - Choose your LLM provider

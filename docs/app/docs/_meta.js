@@ -6,6 +6,7 @@ export default {
   'model-adapters': 'Model Adapters',
   'engines': 'Engines',
   'validators': 'Validators',
+  'dataset-collection': 'Dataset Collection',
   'testing': 'Testing',
   'logging': 'Logging'
 }
