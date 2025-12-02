@@ -1,8 +1,10 @@
+import random
 from pathlib import Path
 import csv
 import json
-from .schemas import CollectedExample
 from typing import Optional, Dict, Any, List
+
+from .schemas import CollectedExample
 
 
 class DatasetCollector:
@@ -13,7 +15,8 @@ class DatasetCollector:
                  format: str ="jsonl",
                  buffer_size: int = 10,
                  filters: Optional[Dict[str, Any]] = None,
-                 auto_split: bool = False
+                 auto_split: bool = False,
+                 split_ratios: Optional[Dict[str, float]] = None
                  ):
         self.output_path = output_path
         self.format = format
@@ -22,6 +25,16 @@ class DatasetCollector:
         self.buffer_size = buffer_size
         self.examples_written = 0
         self.buffer = []
+
+        if split_ratios is None:
+            self.split_ratios = {"train": 0.8, "val": 0.1, "test": 0.1}
+        else:
+            self.split_ratios = split_ratios
+
+        if auto_split:
+            total = sum(self.split_ratios.values())
+            if not (0.99 <= total <= 1.01):
+                raise ValueError(f"Split ratios must sum to 1.0, got {total}")
 
     def collect(self, example_data: Dict[str, Any]) -> None:
         example = CollectedExample(**example_data)
@@ -50,21 +63,69 @@ class DatasetCollector:
         
         return True
     
+    def __assign_split(self) -> str:
+        rand = random.random()
+        cumulative = 0.0
+
+        for split_name, ratio in self.split_ratios.items():
+            cumulative += ratio
+            if rand < cumulative:
+                return split_name
+            
+        # Fall back? Statistically impossible?
+        return "train"
+    
+    def _get_split_path(self, split: str) -> Path:
+        base_path = Path(self.output_path)
+
+        if self.auto_split:
+            stem = base_path.stem
+            suffix = base_path.suffix
+            return base_path.parent / f"{stem}_{split}{suffix}"
+        else:
+            return base_path
+
     def _write_batch(self) -> None:
         if not self.buffer:
             return
         
-        output_path = Path(self.output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.auto_split:
+            split_groups: Dict[str, List[CollectedExample]] = {}
 
-        if self.format == "jsonl":
-            self._write_jsonl(output_path)
-        elif self.format == "json":
-            self._write_json(output_path)
-        elif self.format == "csv":
-            self._write_csv(output_path)
+            for example in self.buffer:
+                split = self.__assign_split()
+                if split not in split_groups:
+                    split_groups[split] = []
+                split_groups[split].append(example)
+            
+            for split, examples in split_groups.items():
+                output_path = self._get_split_path(split)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Temporarily replace buffer with split examples
+                old_buffer = self.buffer
+                self.buffer = examples
+                
+                if self.format == "jsonl":
+                    self._write_jsonl(output_path)
+                elif self.format == "json":
+                    self._write_json(output_path)
+                elif self.format == "csv":
+                    self._write_csv(output_path)
+                
+                self.buffer = old_buffer
         else:
-            raise ValueError(f"Unsupported format: {self.format}")
+            output_path = Path(self.output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if self.format == "jsonl":
+                self._write_jsonl(output_path)
+            elif self.format == "json":
+                self._write_json(output_path)
+            elif self.format == "csv":
+                self._write_csv(output_path)
+            else:
+                raise ValueError(f"Unsupported format: {self.format}")
         
         self.examples_written += len(self.buffer)
         self.buffer.clear()
@@ -149,7 +210,10 @@ class DatasetCollector:
 
     def close(self):
         self._write_batch()
-        print(f"Dataset collection complete: {self.examples_written} examples written to {self.output_path}")
+        if self.auto_split:
+            print(f"Dataset collection complete: {self.examples_written} examples written (split into train/val/test)")
+        else:
+            print(f"Dataset collection complete: {self.examples_written} examples written to {self.output_path}")
 
     def export(self, output_path: str, format: str):
         examples = self._read_all_examples()
