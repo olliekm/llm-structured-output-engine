@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 import csv
 import json
+import re
 from typing import Optional, Dict, Any, List
 
 from .schemas import CollectedExample
@@ -16,13 +17,17 @@ class DatasetCollector:
                  buffer_size: int = 10,
                  filters: Optional[Dict[str, Any]] = None,
                  auto_split: bool = False,
-                 split_ratios: Optional[Dict[str, float]] = None
+                 split_ratios: Optional[Dict[str, float]] = None,
+                 versioning: bool = False,
+                 version: Optional[str] = None
                  ):
         self.output_path = output_path
         self.format = format
         self.filters = filters
         self.auto_split = auto_split
         self.buffer_size = buffer_size
+        self.versioning = versioning
+        self.version = version
         self.examples_written = 0
         self.buffer = []
 
@@ -78,17 +83,19 @@ class DatasetCollector:
     def _get_split_path(self, split: str) -> Path:
         base_path = Path(self.output_path)
 
+        versioned_path = self._get_versioned_path(base_path)
+
         if self.auto_split:
-            stem = base_path.stem
-            suffix = base_path.suffix
-            return base_path.parent / f"{stem}_{split}{suffix}"
+            stem = versioned_path.stem
+            suffix = versioned_path.suffix
+            return versioned_path.parent / f"{stem}_{split}{suffix}"
         else:
-            return base_path
+            return versioned_path
 
     def _write_batch(self) -> None:
         if not self.buffer:
             return
-        
+                
         if self.auto_split:
             split_groups: Dict[str, List[CollectedExample]] = {}
 
@@ -115,7 +122,8 @@ class DatasetCollector:
                 
                 self.buffer = old_buffer
         else:
-            output_path = Path(self.output_path)
+            base_path = Path(self.output_path)
+            output_path = self._get_versioned_path(base_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
             if self.format == "jsonl":
@@ -208,6 +216,31 @@ class DatasetCollector:
         
         return examples
 
+    def _get_versioned_path(self, base_path: Path) -> Path:
+        if not self.versioning:
+            return base_path
+        
+        if self.version:
+            stem = base_path.stem
+            suffix = base_path.suffix
+            return base_path.parent / f"{stem}_v{self.version}{suffix}"
+        else:
+            stem = base_path.stem
+            suffix = base_path.suffix
+            parent = base_path.parent
+            
+            existing = list(parent.glob(f"{stem}_v*{suffix}"))
+            if not existing:
+                version_num = 1
+            else:
+                versions = []
+                for p in existing:
+                    match = re.search(rf"{stem}_v(\d+){suffix}", p.name)
+                    if match:
+                        versions.append(int(match.group(1)))
+                version_num = max(versions) + 1 if versions else 1
+            return base_path.parent / f"{stem}_v{version_num}{suffix}"
+
     def close(self):
         self._write_batch()
         if self.auto_split:
@@ -231,5 +264,6 @@ class DatasetCollector:
         self.buffer = old_buffer
         self.output_path = old_path
         self.format = old_format
+
 
         
