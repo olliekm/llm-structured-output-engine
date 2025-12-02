@@ -1,8 +1,11 @@
 from parsec.core import BaseLLMAdapter, GenerationResponse, ValidationResult, ValidationStatus
 from parsec.validators.base_validator import BaseValidator
-from typing import Any, Optional
 from pydantic import BaseModel
+from typing import Any, Optional, TYPE_CHECKING
 from dataclasses import asdict, is_dataclass
+
+if TYPE_CHECKING:
+    from parsec.training.collector import DatasetCollector
 
 class EnforcedOutput(BaseModel):
     data: Any
@@ -18,11 +21,13 @@ class EnforcementEngine:
         self,
         adapter: BaseLLMAdapter,
         validator: BaseValidator,
-        max_retries: int = 3
+        max_retries: int = 3,
+        collector: Optional['DatasetCollector'] = None
     ):
         self.adapter = adapter
         self.validator = validator
         self.max_retries = max_retries
+        self.collector = collector
     
     async def enforce(
         self,
@@ -57,6 +62,20 @@ class EnforcementEngine:
             last_validation = validation
             
             if validation.status == ValidationStatus.VALID:
+                if self.collector:
+                    self.collector.collect({
+                        "prompt": prompt,
+                        "schema": schema,
+                        "response": generation.output,
+                        "parsed_output": validation.parsed_output,
+                        "success": True,
+                        "validation_errors": [],
+                        "metadata": {
+                            "retry_count": retry_count,
+                            "tokens_used": generation.tokens_used,
+                            "latency_ms": generation.latency_ms
+                        }
+                    })
                 return EnforcedOutput(
                     data=validation.parsed_output,
                     generation=generation,
@@ -65,12 +84,28 @@ class EnforcementEngine:
                     success=True
                 )
             
+
             # Add errors to next prompt
             if attempt < self.max_retries:
                 error_msg = "\n".join(e.message for e in validation.errors)
                 prompt = f"{prompt}\n\nPrevious attempt had errors:\n{error_msg}"
                 retry_count += 1
-        
+    
+        if self.collector:
+            self.collector.collect({
+                "prompt": prompt,
+                "schema": schema,
+                "response": generation.output,
+                "parsed_output": last_validation.parsed_output if last_validation else None,
+                "success": False,
+                "validation_errors": [e.message for e in last_validation.errors] if last_validation else [],
+                "metadata": {
+                    "retry_count": retry_count,
+                    "tokens_used": generation.tokens_used,
+                    "latency_ms": generation.latency_ms
+                }
+            })
+            
         # All retries failed
         return EnforcedOutput(
             data=None,
