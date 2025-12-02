@@ -7,7 +7,7 @@ class CollectedExample(BaseModel):
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     prompt: str
-    schema: Dict[str, Any] # schema used
+    json_schema: Dict[str, Any] # schema used
     response: str # Raw llm output
     parsed_output: Optional[Dict[str, Any]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)

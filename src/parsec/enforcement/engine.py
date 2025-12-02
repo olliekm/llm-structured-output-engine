@@ -65,7 +65,7 @@ class EnforcementEngine:
                 if self.collector:
                     self.collector.collect({
                         "prompt": prompt,
-                        "schema": schema,
+                        "json_schema": schema,
                         "response": generation.output,
                         "parsed_output": validation.parsed_output,
                         "success": True,
@@ -94,7 +94,7 @@ class EnforcementEngine:
         if self.collector:
             self.collector.collect({
                 "prompt": prompt,
-                "schema": schema,
+                "json_schema": schema,
                 "response": generation.output,
                 "parsed_output": last_validation.parsed_output if last_validation else None,
                 "success": False,

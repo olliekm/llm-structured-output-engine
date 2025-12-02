@@ -172,7 +172,7 @@ class DatasetCollector:
                 'request_id': example.request_id,
                 'timestamp': example.timestamp.isoformat(),
                 'prompt': example.prompt,
-                'schema': json.dumps(example.schema),
+                'json_schema': json.dumps(example.json_schema),
                 'response': example.response,
                 'parsed_output': json.dumps(example.parsed_output) if example.parsed_output else '',
                 'success': example.success,
