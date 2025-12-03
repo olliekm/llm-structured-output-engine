@@ -1,6 +1,7 @@
 requirements.txt
 src/*.egg-info/
 .venv/
+.env
 
 # Python
 *.pyc
