@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Type
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 import json
-import re
 
 from .base_validator import BaseValidator, ValidationResult, ValidationStatus, ValidationError
+from .repair_utils import JSONRepairUtils
 
 class PydanticValidator(BaseValidator):
     """ Validator that checks for valid Pydantic schema ouput """
@@ -57,42 +57,7 @@ class PydanticValidator(BaseValidator):
         )
     
     def repair(self, output: str, errors: List[ValidationError]) -> str:
-        """Repair common JSON issues"""
-        repaired = output
-        
-        # Remove markdown code blocks
-        if repaired.startswith("```"):
-            repaired = repaired.split("```")[1]
-            if repaired.startswith("json"):
-                repaired = repaired[4:]
-        
-        # Remove trailing commas
-        repaired = self._remove_trailing_commas(repaired)
-        
-        # Fix common quote issues
-        repaired = self._fix_quotes(repaired)
-        
-        # Try to extract JSON from text
-        if not repaired.strip().startswith("{"):
-            repaired = self._extract_json(repaired)
-        
-        return repaired
-    
-    def _remove_trailing_commas(self, text: str) -> str:
-        """Remove trailing commas before ] or }"""
-        return re.sub(r',(\s*[}\]])', r'\1', text)
-    
-    def _fix_quotes(self, text: str) -> str:
-        """Fix smart quotes, missing quotes, etc."""
-        # Replace smart quotes with regular quotes
-        text = text.replace('"', '"').replace('"', '"')
-        text = text.replace("'", "'").replace("'", "'")
-        return text
-    
-    def _extract_json(self, text: str) -> str:
-        """Try to find JSON in surrounding text"""
-        # Look for {...} or [...]
-        match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
-        return match.group(1) if match else text
+        """Repair common JSON issues using shared repair utilities."""
+        return JSONRepairUtils.repair(output)
 
 
