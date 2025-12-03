@@ -197,23 +197,39 @@ class DatasetCollector:
         path = Path(self.output_path)
         if not path.exists():
             return []
-        
+
         examples = []
-        
+
         if self.format == "jsonl":
             with open(path, 'r') as f:
                 for line in f:
                     data = json.loads(line)
                     examples.append(CollectedExample(**data))
-        
+
         elif self.format == "json":
             with open(path, 'r') as f:
                 data = json.load(f)
                 for item in data:
                     examples.append(CollectedExample(**item))
-        
-        # CSV reading is more complex, skip for now
-        
+
+        elif self.format == "csv":
+            with open(path, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    # Parse JSON fields back from strings
+                    data = {
+                        'request_id': row['request_id'],
+                        'timestamp': row['timestamp'],
+                        'prompt': row['prompt'],
+                        'json_schema': json.loads(row['json_schema']),
+                        'response': row['response'],
+                        'parsed_output': json.loads(row['parsed_output']) if row['parsed_output'] else None,
+                        'success': row['success'].lower() == 'true',
+                        'validation_errors': json.loads(row['validation_errors']),
+                        'metadata': json.loads(row['metadata'])
+                    }
+                    examples.append(CollectedExample(**data))
+
         return examples
 
     def _get_versioned_path(self, base_path: Path) -> Path:

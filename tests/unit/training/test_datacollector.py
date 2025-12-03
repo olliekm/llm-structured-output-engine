@@ -261,3 +261,84 @@ class TestVersioning:
         v2_path = Path(temp_dir) / "dataset_v2.jsonl"
         assert v1_path.exists()
         assert v2_path.exists()
+
+class TestCSVReadingAndExport:
+    """Test CSV reading functionality"""
+
+    def test_read_csv_examples(self, temp_dir, sample_example):
+        """Test that CSV files can be read back correctly"""
+        output_path = Path(temp_dir) / "dataset.csv"
+
+        # Write CSV data
+        collector = DatasetCollector(
+            output_path=str(output_path),
+            format="csv",
+            buffer_size=5
+        )
+
+        collector.collect(sample_example)
+        collector.close()
+
+        # Read it back
+        examples = collector._read_all_examples()
+
+        assert len(examples) == 1
+        assert examples[0].prompt == sample_example["prompt"]
+        assert examples[0].success == sample_example["success"]
+        assert examples[0].parsed_output == sample_example["parsed_output"]
+        assert examples[0].json_schema == sample_example["json_schema"]
+        assert examples[0].metadata == sample_example["metadata"]
+        assert examples[0].validation_errors == sample_example["validation_errors"]
+
+    def test_export_csv_to_json(self, temp_dir, sample_example):
+        """Test exporting from CSV to JSON format"""
+        csv_path = Path(temp_dir) / "dataset.csv"
+        json_path = Path(temp_dir) / "dataset_exported.json"
+
+        # Write CSV data
+        collector = DatasetCollector(
+            output_path=str(csv_path),
+            format="csv",
+            buffer_size=5
+        )
+
+        collector.collect(sample_example)
+        collector.close()
+
+        # Export to JSON
+        collector.export(str(json_path), format="json")
+
+        # Verify JSON file
+        assert json_path.exists()
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            assert len(data) == 1
+            assert data[0]["prompt"] == sample_example["prompt"]
+            assert data[0]["success"] == sample_example["success"]
+
+    def test_export_csv_to_jsonl(self, temp_dir, sample_example):
+        """Test exporting from CSV to JSONL format"""
+        csv_path = Path(temp_dir) / "dataset.csv"
+        jsonl_path = Path(temp_dir) / "dataset_exported.jsonl"
+
+        # Write CSV data
+        collector = DatasetCollector(
+            output_path=str(csv_path),
+            format="csv",
+            buffer_size=5
+        )
+
+        collector.collect(sample_example)
+        collector.close()
+
+        # Export to JSONL
+        collector.export(str(jsonl_path), format="jsonl")
+
+        # Verify JSONL file
+        assert jsonl_path.exists()
+        with open(jsonl_path, 'r') as f:
+            lines = f.readlines()
+            assert len(lines) == 1
+            data = json.loads(lines[0])
+            assert data["prompt"] == sample_example["prompt"]
+            assert data["success"] == sample_example["success"]
