@@ -2,6 +2,8 @@ from parsec.core import BaseLLMAdapter, GenerationResponse, ValidationResult, Va
 from parsec.validators.base_validator import BaseValidator
 from pydantic import BaseModel
 from typing import Any, Optional, TYPE_CHECKING
+from parsec.cache.base import BaseCache
+from parsec.cache.keys import generate_cache_key
 
 if TYPE_CHECKING:
     from parsec.training.collector import DatasetCollector
@@ -21,12 +23,14 @@ class EnforcementEngine:
         adapter: BaseLLMAdapter,
         validator: BaseValidator,
         max_retries: int = 3,
-        collector: Optional['DatasetCollector'] = None
+        collector: Optional['DatasetCollector'] = None,
+        cache: Optional[BaseCache] = None
     ):
         self.adapter = adapter
         self.validator = validator
         self.max_retries = max_retries
         self.collector = collector
+        self.cache = cache
     
     async def enforce(
         self,
@@ -35,7 +39,18 @@ class EnforcementEngine:
         **kwargs
     ) -> EnforcedOutput:
         """Generate and validate output with retries"""
-        
+
+        if self.cache:
+            cache_key = generate_cache_key(
+                prompt=prompt,
+                model=self.adapter.model,
+                schema=schema,
+                temperature=kwargs.get('temperature', 0.7)
+                )
+            cached_result = self.cache.get(cache_key)
+            if cached_result:
+                return cached_result
+
         retry_count = 0
         last_validation = None
         
@@ -66,14 +81,19 @@ class EnforcementEngine:
                             "latency_ms": generation.latency_ms
                         }
                     })
-                return EnforcedOutput(
+
+                result = EnforcedOutput(
                     data=validation.parsed_output,
                     generation=generation,
                     validation=validation,
                     retry_count=retry_count,
                     success=True
                 )
-            
+
+                if self.cache:
+                    self.cache.set(cache_key, result)
+                
+                return result
 
             # Add errors to next prompt
             if attempt < self.max_retries:
