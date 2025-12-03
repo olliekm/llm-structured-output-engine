@@ -1,11 +1,15 @@
 from typing import Any, List, Dict, Optional
-from pydantic import BaseModel, Field
-import datetime
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from datetime import datetime, timezone
 import uuid
 
 class CollectedExample(BaseModel):
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
+
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     prompt: str
     json_schema: Dict[str, Any] # schema used
     response: str # Raw llm output
@@ -14,9 +18,8 @@ class CollectedExample(BaseModel):
     success: bool
     validation_errors: List[str] = Field(default_factory=list)
 
-    class Config:
-        json_encoders = {
-            datetime.datetime: lambda v: v.isoformat()
-        }
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        return dt.isoformat()
 
 

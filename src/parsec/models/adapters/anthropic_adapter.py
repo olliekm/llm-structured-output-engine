@@ -12,7 +12,7 @@ class AnthropicAdapter(BaseLLMAdapter):
         self.logger = get_logger(__name__)
 
     def _initialize_client(self):
-        return anthropic.Anthropic(api_key=self.api_key)
+        return anthropic.AsyncAnthropic(api_key=self.api_key)
 
     @property
     def provider(self) -> ModelProviders:
@@ -134,6 +134,5 @@ class AnthropicAdapter(BaseLLMAdapter):
                 ])
             return True
         except Exception as e:
-            # Log the error if logging is available
-            # For now, silently fail and return False
+            self.logger.debug(f"Health check failed: {e}")
             return False

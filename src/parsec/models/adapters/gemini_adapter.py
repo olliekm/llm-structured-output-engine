@@ -177,6 +177,5 @@ class GeminiAdapter(BaseLLMAdapter):
             # If we get here without exception, API is working
             return True
         except Exception as e:
-            # Log the error if logging is available
-            # For now, silently fail and return False
+            self.logger.debug(f"Health check failed: {e}")
             return False

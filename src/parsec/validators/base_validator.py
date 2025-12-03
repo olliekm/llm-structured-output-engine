@@ -1,33 +1,6 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
-
-class ValidationStatus(Enum):
-    """Possible validation statuses."""
-    VALID = "valid"
-    INVALID = "invalid"
-    REPAIRABLE = "repairable"
-    UNREPAIRABLE = "unrepairable"
-
-@dataclass
-class ValidationError:
-    """Class representing a validation error."""
-    path: str
-    message: str
-    expected: Any
-    actual: Any
-    severity: str  # e.g., 'error', 'warning', 'info'
-
-@dataclass
-class ValidationResult:
-    """Class representing the result of a validation."""
-    status: ValidationStatus
-    parsed_output: Optional[Any] = None
-    errors: List[ValidationError] = field(default_factory=list)
-    raw_output: str = ""
-    repair_attempted: bool = False
-    repair_successful: bool = False
+from parsec.core.schemas import ValidationStatus, ValidationError, ValidationResult
 
 class BaseValidator(ABC):
     """Abstract base class for validators."""
@@ -42,14 +15,14 @@ class BaseValidator(ABC):
         """Attempt to repair the given output to conform to the provided schema."""
         pass
 
-    def validate_and_repair(self, output: str, schema: Dict[str, Any], max_repair_attemps: int = 2) -> ValidationResult:
+    def validate_and_repair(self, output: str, schema: Dict[str, Any], max_repair_attempts: int = 2) -> ValidationResult:
         """Validate the output and attempt repair if invalid."""
         result = self.validate(output, schema)
 
         if result.status == ValidationStatus.VALID:
             return result
 
-        for attempt in range(max_repair_attemps):
+        for attempt in range(max_repair_attempts):
             if result.status == ValidationStatus.UNREPAIRABLE:
                 break
 

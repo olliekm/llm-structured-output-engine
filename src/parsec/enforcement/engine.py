@@ -2,7 +2,6 @@ from parsec.core import BaseLLMAdapter, GenerationResponse, ValidationResult, Va
 from parsec.validators.base_validator import BaseValidator
 from pydantic import BaseModel
 from typing import Any, Optional, TYPE_CHECKING
-from dataclasses import asdict, is_dataclass
 
 if TYPE_CHECKING:
     from parsec.training.collector import DatasetCollector
@@ -50,15 +49,6 @@ class EnforcementEngine:
                 schema
             )
 
-            # If validator returned a dataclass-based ValidationResult (from
-            # `validators.base_validator`), convert it to the pydantic
-            # `ValidationResult` model expected by `EnforcedOutput` so pydantic
-            # validation succeeds and enum/value comparisons work.
-            if not isinstance(validation, BaseModel) and is_dataclass(validation):
-                # asdict will recursively convert dataclasses to dicts which
-                # pydantic can parse into the expected model types.
-                validation = ValidationResult(**asdict(validation))
-            
             last_validation = validation
             
             if validation.status == ValidationStatus.VALID:

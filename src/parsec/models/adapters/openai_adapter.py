@@ -106,5 +106,6 @@ class OpenAIAdapter(BaseLLMAdapter):
             client = self.get_client()
             await client.models.list()
             return True
-        except:
+        except Exception as e:
+            self.logger.debug(f"Health check failed: {e}")
             return False
