@@ -1,8 +1,11 @@
 # parsec
 
+[![PyPI version](https://badge.fury.io/py/parsec-llm.svg)](https://badge.fury.io/py/parsec-llm)
+[![Python Versions](https://img.shields.io/pypi/pyversions/parsec-llm.svg)](https://pypi.org/project/parsec-llm/)
 [![Tests](https://github.com/olliekm/parsec/actions/workflows/test.yml/badge.svg)](https://github.com/olliekm/parsec/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/olliekm/parsec/branch/main/graph/badge.svg)](https://codecov.io/gh/olliekm/parsec)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Documentation](https://img.shields.io/badge/docs-parsec.olliekm.com-blue)](https://parsec.olliekm.com)
 
 ⚡ Lightweight orchestration toolkit to generate, validate, repair and enforce
 structured output from large language models (LLMs). The project provides a
