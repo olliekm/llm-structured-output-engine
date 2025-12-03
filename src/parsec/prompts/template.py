@@ -41,3 +41,39 @@ class PromptTemplate:
 
 
         return rendered
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize template to dictionary."""
+        return {
+            "name": self.name,
+            "template": self.template,
+            "variables": {k: v.__name__ for k, v in self.variables.items()},
+            "required": self.required,
+            "defaults": self.defaults
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'PromptTemplate':
+        """Deserialize template from dictionary."""
+        type_map = {
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "list": list,
+            "dict": dict
+        }
+        
+        variables = {
+            k: type_map.get(v, str) 
+            for k, v in data["variables"].items()
+        }
+        
+        return cls(
+            name=data["name"],
+            template=data["template"],
+            variables=variables,
+            required=data["required"],
+            defaults=data.get("defaults")
+        )
+    

@@ -1,5 +1,7 @@
 from .template import PromptTemplate
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+import yaml
+from pathlib import Path
 
 class TemplateRegistry:
 
@@ -44,6 +46,7 @@ class TemplateRegistry:
         return sorted(self.registry[name].keys(), key=self._version_sort_key, reverse=True)
 
     def exists(self, name: str, version: Optional[str] = None) -> bool:
+        """Checks if template by name exists"""
         if name not in self.registry:
             return False
         if version is None:
@@ -68,6 +71,34 @@ class TemplateRegistry:
             if not self.registry[name]:
                 del self.registry[name]
     
+
+    def save_to_disk(self, path: str) -> None:
+        """Save all templates to YAML file."""
+        data = {}
+        for name, versions in self.registry.items():
+            data[name] = {}
+            for version, template in versions.items():
+                data[name][version] = template.to_dict()
+        
+        with open(path, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    def load_from_disk(self, path: str) -> None:
+        """Load templates from YAML file."""
+        if not Path(path).exists():
+            raise FileNotFoundError(f"Template file not found: {path}")
+
+        with open(path, 'r') as f:
+            data = yaml.safe_load(f)
+
+        if not data:
+            return
+        
+        for name, versions in data.items():
+            for version, template_data in versions.items():
+                template = PromptTemplate.from_dict(template_data)
+                self.register(template, version)
+
     def _get_latest_version(self, versions: List[str]) -> str:
         """Get the latest version from a list of version strings."""
         return sorted(versions, key=self._version_sort_key, reverse=True)[0]
