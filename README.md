@@ -9,23 +9,40 @@
 
 ⚡ Lightweight orchestration toolkit to generate, validate, repair and enforce
 structured output from large language models (LLMs). The project provides a
-provider-agnostic adapter interface, validators (JSON/pydantic), and an
-enforcement engine that retries and repairs LLM output until it conforms to a
-schema.
+provider-agnostic adapter interface, validators (JSON/Pydantic), prompt template
+management with versioning, caching, dataset collection, and an enforcement engine
+that retries and repairs LLM output until it conforms to a schema.
 
 This repository contains:
-- Adapter abstractions and a concrete OpenAI adapter.
-- Validation and repair utilities for JSON output.
+- Adapter abstractions for OpenAI, Anthropic, and Google Gemini.
+- Validation and repair utilities for JSON and Pydantic schemas.
 - An `EnforcementEngine` that generates, validates, repairs, and retries.
-- Examples and tests demonstrating usage.
+- **Prompt template system** with versioning and YAML persistence.
+- **LRU caching** to reduce redundant API calls and costs.
+- **Dataset collection** for training and fine-tuning.
+- Examples and comprehensive test suite.
 
 ## Features
 
-- Provider-agnostic adapter interface for plugging different LLMs.
-- Native-structured output support (when providers allow JSON responses).
-- JSON validation with schema-based repair heuristics.
-- Retry loop with feedback to the model for progressive repair.
-- Small test suite and example runner using the OpenAI adapter.
+### Core Enforcement
+- **Provider-agnostic adapters**: OpenAI, Anthropic (Claude), Google Gemini
+- **Multiple validators**: JSON Schema, Pydantic models
+- **Automatic repair**: Schema-based heuristics fix common formatting issues
+- **Retry loop**: Progressive feedback to model for iterative repair
+- **Dataset collection**: Capture and export training data (JSONL, JSON, CSV)
+
+### Prompt Management
+- **Template system**: Type-safe variable substitution with validation
+- **Version control**: Semantic versioning (1.0.0, 2.0.0, etc.)
+- **YAML persistence**: Save/load templates from files
+- **Template registry**: Centralized management of all templates
+- **Template manager**: One-line API for template + enforcement
+
+### Performance & Caching
+- **LRU cache**: In-memory caching with TTL support
+- **Cost reduction**: Avoid redundant API calls for identical requests
+- **Cache integration**: Seamless integration with enforcement engine
+- **Statistics tracking**: Monitor cache hits, misses, and hit rates
 
 ## Installation
 
@@ -41,7 +58,9 @@ cd parsec
 pip install -e ".[dev]"
 ```
 
-## Quick Example
+## Quick Start
+
+### Basic Usage
 
 ```python
 from parsec.models.adapters import OpenAIAdapter
@@ -51,7 +70,7 @@ from parsec.enforcement import EnforcementEngine
 # Set up components
 adapter = OpenAIAdapter(api_key="your-api-key", model="gpt-4o-mini")
 validator = JSONValidator()
-engine = EnforcementEngine(adapter, validator)
+engine = EnforcementEngine(adapter, validator, max_retries=3)
 
 # Define your schema
 schema = {
@@ -60,7 +79,7 @@ schema = {
         "name": {"type": "string"},
         "age": {"type": "integer"}
     },
-    "required": ["name"]
+    "required": ["name", "age"]
 }
 
 # Enforce structured output
@@ -69,7 +88,83 @@ result = await engine.enforce(
     schema
 )
 
-print(result.parsed_output)  # {"name": "John Doe", "age": 30}
+print(result.data)  # {"name": "John Doe", "age": 30}
+print(result.success)  # True
+print(result.retry_count)  # 0
+```
+
+### With Caching
+
+```python
+from parsec.cache import InMemoryCache
+
+# Add cache to reduce redundant API calls
+cache = InMemoryCache(max_size=100, default_ttl=3600)
+engine = EnforcementEngine(adapter, validator, cache=cache)
+
+# First call hits API
+result1 = await engine.enforce(prompt, schema)
+
+# Second identical call returns cached result (no API call!)
+result2 = await engine.enforce(prompt, schema)
+
+# Check cache performance
+stats = cache.get_stats()
+print(stats)  # {'hits': 1, 'misses': 1, 'hit_rate': '50.00%'}
+```
+
+### With Prompt Templates
+
+```python
+from parsec.prompts import PromptTemplate, TemplateRegistry, TemplateManager
+
+# Create a reusable template
+template = PromptTemplate(
+    name="extract_person",
+    template="Extract person info from: {text}\n\nReturn as JSON.",
+    variables={"text": str},
+    required=["text"]
+)
+
+# Register with version
+registry = TemplateRegistry()
+registry.register(template, "1.0.0")
+
+# Use with enforcement
+manager = TemplateManager(registry, engine)
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, age 30"},
+    schema=schema
+)
+
+# Save templates to file
+registry.save_to_disk("templates.yaml")
+
+# Load templates later
+registry.load_from_disk("templates.yaml")
+```
+
+### With Pydantic Models
+
+```python
+from pydantic import BaseModel
+from parsec.validators import PydanticValidator
+
+class Person(BaseModel):
+    name: str
+    age: int
+    email: str
+
+validator = PydanticValidator()
+engine = EnforcementEngine(adapter, validator)
+
+result = await engine.enforce(
+    "Extract: John Doe, 30 years old, john@example.com",
+    Person
+)
+
+print(result.data)  # {"name": "John Doe", "age": 30, "email": "john@example.com"}
 ```
 
 ## Development Setup
@@ -101,14 +196,32 @@ The example demonstrates using `OpenAIAdapter`, `JSONValidator` and
 
 ## Code Structure
 
-- `src/parsec/core` — core abstractions and schemas.
-- `src/parsec/models` — provider adapters (OpenAI, Anthropic).
-- `src/parsec/validators` — validator implementations.
-- `src/parsec/enforcement` — enforcement/orchestration logic.
-- `src/parsec/cache` — caching implementations.
-- `src/parsec/utils` — utility functions (partial JSON parsing).
-- `examples/` — example runners (real OpenAI example included).
-- `tests/` — unit tests with pytest.
+- `src/parsec/core/` — Core abstractions and schemas
+- `src/parsec/models/` — LLM provider adapters (OpenAI, Anthropic, Gemini)
+- `src/parsec/validators/` — Validator implementations (JSON, Pydantic)
+- `src/parsec/enforcement/` — Enforcement and orchestration engine
+- `src/parsec/prompts/` — Prompt template system with versioning
+- `src/parsec/cache/` — Caching implementations (InMemoryCache)
+- `src/parsec/training/` — Dataset collection for fine-tuning
+- `src/parsec/utils/` — Utility functions (partial JSON parsing)
+- `examples/` — Working examples with real API calls
+- `tests/` — Comprehensive test suite with pytest
+
+## Examples
+
+Check out the `examples/` directory for complete working examples:
+
+- `basic_usage.py` - Simple extraction with JSON schema
+- `prompt_template_example.py` - Template system with versioning
+- `prompt_persistence_example.py` - Save/load templates from YAML
+- `template_manager_example.py` - TemplateManager integration
+- `template_manager_live_example.py` - Live demo with real API calls
+- `streaming_example.py` - Streaming support (experimental)
+
+Run any example:
+```bash
+python3 examples/template_manager_live_example.py
+```
 
 ## Testing
 
@@ -118,13 +231,103 @@ Run the test suite with:
 poetry run pytest -q
 ```
 
-## Notes & Next Steps
+## Advanced Features
 
-- The OpenAI example performs real API calls — be mindful of API keys and
-	costs when running it.
-- Consider mocking adapters for offline or CI-safe tests.
-- This project is intentionally minimal and modular — adapters and validators
-	can be extended to support additional providers and formats.
+### Dataset Collection
+
+Collect and export training data for fine-tuning:
+
+```python
+from parsec.training import DatasetCollector
+
+collector = DatasetCollector(
+    output_path="./training_data",
+    format="jsonl",  # or "json", "csv"
+    auto_flush=True
+)
+
+engine = EnforcementEngine(adapter, validator, collector=collector)
+
+# Data is automatically collected during enforcement
+result = await engine.enforce(prompt, schema)
+
+# Export collected data
+collector.flush()  # Writes to disk
+```
+
+### Template Versioning Workflow
+
+```python
+# v1.0.0 - Initial template
+template_v1 = PromptTemplate(
+    name="extract_person",
+    template="Extract: {text}",
+    variables={"text": str},
+    required=["text"]
+)
+registry.register(template_v1, "1.0.0")
+
+# v2.0.0 - Improved with validation rules
+template_v2 = PromptTemplate(
+    name="extract_person",
+    template="Extract: {text}\n\nValidation: {rules}",
+    variables={"text": str, "rules": str},
+    required=["text"],
+    defaults={"rules": "Strict validation"}
+)
+registry.register(template_v2, "2.0.0")
+
+# Use specific version
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    version="2.0.0",  # Explicit version
+    variables={"text": "John Doe, 30"}
+)
+
+# Or use latest automatically
+result = await manager.enforce_with_template(
+    template_name="extract_person",  # Gets v2.0.0
+    variables={"text": "John Doe, 30"}
+)
+```
+
+### Multi-Provider Support
+
+```python
+from parsec.models.adapters import OpenAIAdapter, AnthropicAdapter
+
+# Switch between providers easily
+openai_adapter = OpenAIAdapter(api_key=openai_key, model="gpt-4o-mini")
+anthropic_adapter = AnthropicAdapter(api_key=anthropic_key, model="claude-3-5-sonnet-20241022")
+
+# Same enforcement code works with any adapter
+engine = EnforcementEngine(anthropic_adapter, validator)
+result = await engine.enforce(prompt, schema)
+```
+
+## Roadmap
+
+- [x] Core enforcement engine with retry logic
+- [x] Multiple LLM providers (OpenAI, Anthropic, Gemini)
+- [x] JSON and Pydantic validation
+- [x] LRU caching with TTL
+- [x] Prompt template system with versioning
+- [x] Dataset collection for training
+- [ ] Streaming support for real-time output
+- [ ] Batch processing with rate limiting
+- [ ] Cost tracking and analytics
+- [ ] A/B testing for prompt variants
+- [ ] Output post-processing pipeline
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Notes
+
+- Examples with real API calls will incur costs — use test/development API keys
+- The framework is intentionally modular — extend adapters and validators as needed
+- Template system supports version control via YAML files for team collaboration
 
 ## License
 
