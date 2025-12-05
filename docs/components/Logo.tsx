@@ -7,12 +7,6 @@ type Props = {}
 function Logo({}: Props) {
   return (
     <div className='flex'>
-        <Image
-          src={ParsecLogo}
-          alt="Parsec Logo"
-          width={40}
-          height={50}
-        />
         <span className=' font-bold text-xl self-center'>parsec</span>
     </div>
   )

@@ -11,7 +11,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <head>
+        <link rel="stylesheet" href="https://use.typekit.net/yqf3hci.css" />
+      </head>
+      <body className="font-tiempos">{children}</body>
     </html>
   )
 }
