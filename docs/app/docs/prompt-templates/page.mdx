@@ -1,0 +1,550 @@
+# Prompt Templates
+
+Create reusable, versioned prompts with type-safe variable substitution.
+
+## Overview
+
+Parsec's prompt template system helps you manage prompts as code, with version control, type safety, and seamless integration with the enforcement engine.
+
+### Key Features
+
+- **Type-safe variables** - Validate variable types (str, int, float, bool, list, dict)
+- **Semantic versioning** - Track template versions (1.0.0, 2.0.0, etc.)
+- **YAML persistence** - Save/load templates from files for version control
+- **Template registry** - Centralized management of all templates
+- **One-line API** - Use templates directly with enforcement
+
+## Quick Start
+
+```python
+from parsec.prompts import PromptTemplate, TemplateRegistry, TemplateManager
+
+# 1. Create a template
+template = PromptTemplate(
+    name="extract_person",
+    template="Extract person info from: {text}\n\nReturn as JSON.",
+    variables={"text": str},
+    required=["text"]
+)
+
+# 2. Register with version
+registry = TemplateRegistry()
+registry.register(template, "1.0.0")
+
+# 3. Use with enforcement
+manager = TemplateManager(registry, engine)
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, age 30"},
+    schema=schema
+)
+```
+
+## PromptTemplate
+
+Create reusable prompts with typed variables.
+
+### Basic Example
+
+```python
+from parsec.prompts import PromptTemplate
+
+template = PromptTemplate(
+    name="classify_sentiment",
+    template="Classify the sentiment: {text}",
+    variables={"text": str},
+    required=["text"]
+)
+
+# Render the template
+prompt = template.render(text="I love this product!")
+# "Classify the sentiment: I love this product!"
+```
+
+### With Default Values
+
+```python
+template = PromptTemplate(
+    name="extract_data",
+    template="{prompt}\n\n{instructions}",
+    variables={"prompt": str, "instructions": str},
+    required=["prompt"],
+    defaults={"instructions": "Return as valid JSON."}
+)
+
+# Use default
+prompt1 = template.render(prompt="Extract person info")
+# "Extract person info\n\nReturn as valid JSON."
+
+# Override default
+prompt2 = template.render(
+    prompt="Extract person info",
+    instructions="Return as CSV."
+)
+# "Extract person info\n\nReturn as CSV."
+```
+
+### Type Checking
+
+Templates validate variable types automatically:
+
+```python
+template = PromptTemplate(
+    name="calculate",
+    template="Calculate: {x} + {y}",
+    variables={"x": int, "y": int},
+    required=["x", "y"]
+)
+
+# Valid
+prompt = template.render(x=5, y=10)
+
+# Raises TypeError
+prompt = template.render(x="five", y=10)
+# TypeError: Variable 'x' expected int, got str
+```
+
+### Supported Types
+
+- `str` - String values
+- `int` - Integer numbers
+- `float` - Floating point numbers
+- `bool` - Boolean true/false
+- `list` - Lists/arrays
+- `dict` - Dictionaries/objects
+
+## TemplateRegistry
+
+Manage templates with semantic versioning.
+
+### Register Templates
+
+```python
+from parsec.prompts import TemplateRegistry
+
+registry = TemplateRegistry()
+
+# Register different versions
+registry.register(template_v1, "1.0.0")
+registry.register(template_v2, "1.1.0")
+registry.register(template_v3, "2.0.0")
+```
+
+### Retrieve Templates
+
+```python
+# Get latest version (2.0.0)
+template = registry.get("extract_person")
+
+# Get specific version
+template = registry.get("extract_person", "1.0.0")
+```
+
+### List Templates
+
+```python
+# List all template names
+names = registry.list_templates()
+# ["extract_person", "classify_sentiment"]
+
+# List versions for a template
+versions = registry.list_versions("extract_person")
+# ["2.0.0", "1.1.0", "1.0.0"]  # Sorted newest first
+```
+
+### Check Existence
+
+```python
+# Check if template exists
+exists = registry.exists("extract_person")  # True
+exists = registry.exists("extract_person", "1.0.0")  # True
+exists = registry.exists("nonexistent")  # False
+```
+
+### Delete Templates
+
+```python
+# Delete specific version
+registry.delete("extract_person", "1.0.0")
+
+# Delete all versions
+registry.delete("extract_person")
+```
+
+## Template Persistence
+
+Save and load templates from YAML files.
+
+### Save to File
+
+```python
+# Save all templates to YAML
+registry.save_to_disk("templates.yaml")
+```
+
+Example YAML output:
+
+```yaml
+extract_person:
+  1.0.0:
+    name: extract_person
+    template: 'Extract person info from: {text}'
+    variables:
+      text: str
+    required:
+    - text
+    defaults: {}
+  2.0.0:
+    name: extract_person
+    template: 'Extract person info from: {text}\n\n{instructions}'
+    variables:
+      text: str
+      instructions: str
+    required:
+    - text
+    defaults:
+      instructions: Return as valid JSON.
+```
+
+### Load from File
+
+```python
+# Load templates from YAML
+registry = TemplateRegistry()
+registry.load_from_disk("templates.yaml")
+
+# Templates are ready to use
+template = registry.get("extract_person")
+```
+
+### Load from Directory
+
+Use `TemplateManager` to load all YAML files from a directory:
+
+```python
+manager = TemplateManager(registry, engine)
+
+# Load all .yaml and .yml files
+count = manager.load_templates_from_directory("./templates")
+print(f"Loaded {count} template files")
+```
+
+## TemplateManager
+
+High-level API for using templates with enforcement.
+
+### Setup
+
+```python
+from parsec.prompts import TemplateManager
+
+manager = TemplateManager(
+    registry=registry,
+    engine=engine
+)
+```
+
+### Enforce with Template
+
+```python
+# Use latest version
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, age 30"},
+    schema=person_schema
+)
+
+# Use specific version
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    version="1.0.0",
+    variables={"text": "John Doe, age 30"},
+    schema=person_schema
+)
+
+# Pass additional parameters
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, age 30"},
+    schema=person_schema,
+    temperature=0.0,  # Passed to LLM
+    max_retries=5
+)
+```
+
+### Validate Templates
+
+Check all templates are structurally valid:
+
+```python
+validation_results = manager.validate_all_templates()
+
+for result in validation_results:
+    if result['status'] == 'invalid':
+        print(f"❌ {result['template']} v{result['version']}")
+        print(f"   Error: {result['error']}")
+    else:
+        print(f"✓ {result['template']} v{result['version']}")
+```
+
+## Version Management
+
+### Semantic Versioning
+
+Follow semantic versioning for template changes:
+
+- **Major (2.0.0)** - Breaking changes (removed variables, changed behavior)
+- **Minor (1.1.0)** - New features (added optional variables)
+- **Patch (1.0.1)** - Bug fixes (typos, formatting)
+
+### Example Workflow
+
+```python
+# v1.0.0 - Initial release
+template_v1 = PromptTemplate(
+    name="extract_person",
+    template="Extract: {text}",
+    variables={"text": str},
+    required=["text"]
+)
+registry.register(template_v1, "1.0.0")
+
+# v1.1.0 - Add optional format instructions
+template_v1_1 = PromptTemplate(
+    name="extract_person",
+    template="Extract: {text}\n\n{format}",
+    variables={"text": str, "format": str},
+    required=["text"],
+    defaults={"format": "Return as JSON"}
+)
+registry.register(template_v1_1, "1.1.0")
+
+# v2.0.0 - Breaking change (rename variable)
+template_v2 = PromptTemplate(
+    name="extract_person",
+    template="Extract: {input_text}\n\n{format}",
+    variables={"input_text": str, "format": str},  # Renamed 'text' to 'input_text'
+    required=["input_text"],
+    defaults={"format": "Return as JSON"}
+)
+registry.register(template_v2, "2.0.0")
+```
+
+### Migration Strategy
+
+Pin to specific versions in production:
+
+```python
+# Production - pin to stable version
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    version="1.1.0",  # Explicit version
+    variables={"text": "..."}
+)
+
+# Development - use latest
+result = await manager.enforce_with_template(
+    template_name="extract_person",  # Latest version
+    variables={"text": "..."}
+)
+```
+
+## Best Practices
+
+### 1. Use Descriptive Names
+
+```python
+# Good
+template = PromptTemplate(name="extract_person_from_bio", ...)
+
+# Bad
+template = PromptTemplate(name="template1", ...)
+```
+
+### 2. Document Required Variables
+
+```python
+template = PromptTemplate(
+    name="summarize_article",
+    template="""
+Summarize the following article in {max_words} words or less:
+
+{article_text}
+
+Focus on: {focus_areas}
+""",
+    variables={"article_text": str, "max_words": int, "focus_areas": str},
+    required=["article_text", "max_words"],
+    defaults={"focus_areas": "key points and conclusions"}
+)
+```
+
+### 3. Version Control Templates
+
+Store templates in version control:
+
+```bash
+# Save templates
+python -c "from my_app import registry; registry.save_to_disk('templates.yaml')"
+
+# Commit to git
+git add templates.yaml
+git commit -m "Update extract_person template to v2.0.0"
+```
+
+### 4. Test Template Changes
+
+```python
+# Test before registering
+template = PromptTemplate(...)
+
+# Test rendering
+try:
+    prompt = template.render(text="test")
+    print(f"✓ Template renders: {prompt}")
+except Exception as e:
+    print(f"✗ Template error: {e}")
+
+# Then register
+registry.register(template, "1.1.0")
+```
+
+### 5. Use Templates with Caching
+
+Combine templates with caching for maximum efficiency:
+
+```python
+from parsec.cache import InMemoryCache
+
+cache = InMemoryCache(max_size=100, default_ttl=3600)
+engine = EnforcementEngine(adapter, validator, cache=cache)
+manager = TemplateManager(registry, engine)
+
+# Template + cache = fast, consistent results
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, 30"},
+    schema=schema
+)
+```
+
+## Production Workflow
+
+### 1. Initialize on Startup
+
+```python
+# app/startup.py
+from parsec.prompts import TemplateRegistry, TemplateManager
+
+async def init_templates(engine):
+    registry = TemplateRegistry()
+
+    # Load templates from file
+    registry.load_from_disk("templates/production.yaml")
+
+    # Create manager
+    manager = TemplateManager(registry, engine)
+
+    # Validate all templates
+    results = manager.validate_all_templates()
+    invalid = [r for r in results if r['status'] == 'invalid']
+    if invalid:
+        raise RuntimeError(f"Invalid templates: {invalid}")
+
+    return manager
+```
+
+### 2. Use in Handlers
+
+```python
+# app/handlers.py
+async def extract_person(text: str, manager: TemplateManager):
+    result = await manager.enforce_with_template(
+        template_name="extract_person",
+        version="2.0.0",  # Pin version in production
+        variables={"text": text},
+        schema=PERSON_SCHEMA
+    )
+    return result.data
+```
+
+### 3. Update Templates
+
+```bash
+# 1. Update template in code
+# 2. Save to YAML
+python scripts/save_templates.py
+
+# 3. Test
+pytest tests/test_templates.py
+
+# 4. Commit
+git add templates/production.yaml
+git commit -m "Update person extraction template to v2.1.0"
+
+# 5. Deploy
+# Application loads new templates on restart
+```
+
+## API Reference
+
+### PromptTemplate
+
+```python
+class PromptTemplate:
+    def __init__(
+        self,
+        name: str,
+        template: str,
+        variables: Dict[str, type],
+        required: List[str],
+        defaults: Dict[str, Any] = None
+    )
+
+    def render(self, **kwargs) -> str
+    def to_dict(self) -> Dict[str, Any]
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'PromptTemplate'
+```
+
+### TemplateRegistry
+
+```python
+class TemplateRegistry:
+    def register(self, template: PromptTemplate, version: str) -> None
+    def get(self, name: str, version: Optional[str] = None) -> PromptTemplate
+    def list_templates(self) -> List[str]
+    def list_versions(self, name: str) -> List[str]
+    def exists(self, name: str, version: Optional[str] = None) -> bool
+    def delete(self, name: str, version: Optional[str] = None) -> None
+    def save_to_disk(self, path: str) -> None
+    def load_from_disk(self, path: str) -> None
+```
+
+### TemplateManager
+
+```python
+class TemplateManager:
+    def __init__(
+        self,
+        registry: TemplateRegistry,
+        engine: EnforcementEngine
+    )
+
+    async def enforce_with_template(
+        self,
+        template_name: str,
+        variables: dict,
+        schema: Any,
+        version: Optional[str] = None,
+        **kwargs
+    ) -> EnforcedOutput
+
+    def load_templates_from_directory(self, path: str) -> int
+    def validate_all_templates(self) -> List[dict]
+```
+
+---
+
+Next: [Dataset Collection →](../dataset-collection)

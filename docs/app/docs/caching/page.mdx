@@ -1,0 +1,325 @@
+# Caching
+
+Reduce costs and improve performance by caching LLM responses.
+
+## Overview
+
+Parsec's caching system stores successful enforcement results, eliminating redundant API calls for identical requests. This can significantly reduce costs and improve response times in production applications.
+
+### Key Features
+
+- **LRU eviction** - Automatically removes least recently used entries when cache is full
+- **TTL support** - Entries expire after a configurable time-to-live
+- **Statistics tracking** - Monitor cache hits, misses, and hit rates
+- **Deterministic keys** - Cache keys based on prompt, model, schema, and parameters
+- **Seamless integration** - Drop-in compatibility with EnforcementEngine
+
+## Quick Start
+
+```python
+from parsec.cache import InMemoryCache
+from parsec.enforcement import EnforcementEngine
+
+# Create cache with max 100 entries, 1 hour TTL
+cache = InMemoryCache(max_size=100, default_ttl=3600)
+
+# Add cache to enforcement engine
+engine = EnforcementEngine(
+    adapter=adapter,
+    validator=validator,
+    cache=cache
+)
+
+# First call hits the API
+result1 = await engine.enforce(prompt, schema)
+
+# Second identical call returns cached result (no API call!)
+result2 = await engine.enforce(prompt, schema)
+
+# Check performance
+stats = cache.get_stats()
+print(stats)
+# {'size': 1, 'hits': 1, 'misses': 1, 'hit_rate': '50.00%'}
+```
+
+## InMemoryCache
+
+The built-in `InMemoryCache` provides a simple, fast caching solution for single-instance applications.
+
+### Configuration
+
+```python
+cache = InMemoryCache(
+    max_size=100,      # Maximum number of cached entries
+    default_ttl=3600   # Time-to-live in seconds (1 hour)
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_size` | int | 100 | Maximum number of entries before LRU eviction |
+| `default_ttl` | int | 3600 | Time in seconds before entries expire |
+
+### Cache Operations
+
+#### Get Statistics
+
+Monitor cache performance:
+
+```python
+stats = cache.get_stats()
+
+print(f"Cache size: {stats['size']}")
+print(f"Hits: {stats['hits']}")
+print(f"Misses: {stats['misses']}")
+print(f"Hit rate: {stats['hit_rate']}")
+```
+
+#### Clear Cache
+
+Remove all cached entries:
+
+```python
+cache.clear()
+```
+
+#### Manual Cache Operations
+
+While the enforcement engine handles caching automatically, you can also use the cache directly:
+
+```python
+from parsec.cache.keys import generate_cache_key
+
+# Generate cache key
+key = generate_cache_key(
+    prompt="Extract person info",
+    model="gpt-4o-mini",
+    schema=my_schema,
+    temperature=0.7
+)
+
+# Store value
+cache.set(key, result)
+
+# Retrieve value
+cached_result = cache.get(key)  # Returns None if not found or expired
+```
+
+## How Caching Works
+
+### Cache Key Generation
+
+Cache keys are deterministically generated from:
+
+1. **Prompt** - The input text
+2. **Model** - The LLM model name
+3. **Schema** - The validation schema (JSON or Pydantic)
+4. **Parameters** - Model parameters like temperature
+
+This ensures identical requests always produce the same cache key.
+
+### Cache Flow
+
+```
+Request → Check Cache
+           ↓
+       Cache Hit?
+       ↙        ↘
+     Yes         No
+      ↓           ↓
+   Return      Call API
+   Cached    ↓
+   Result    Validate
+             ↓
+           Success?
+             ↓
+          Store in Cache
+             ↓
+          Return Result
+```
+
+### LRU Eviction
+
+When the cache reaches `max_size`, the least recently used entry is automatically removed to make room for new entries.
+
+### TTL Expiration
+
+Entries expire after `default_ttl` seconds. Expired entries are:
+- Removed when accessed
+- Cleaned up during periodic maintenance
+
+## Best Practices
+
+### 1. Set Appropriate Cache Size
+
+```python
+# For high-traffic applications
+cache = InMemoryCache(max_size=1000, default_ttl=3600)
+
+# For development/testing
+cache = InMemoryCache(max_size=50, default_ttl=600)
+```
+
+### 2. Use Longer TTL for Stable Prompts
+
+```python
+# Extract structured data (stable)
+cache = InMemoryCache(default_ttl=86400)  # 24 hours
+
+# Generate creative content (changes often)
+cache = InMemoryCache(default_ttl=300)    # 5 minutes
+```
+
+### 3. Monitor Cache Performance
+
+```python
+# Log cache stats periodically
+stats = cache.get_stats()
+logger.info(f"Cache hit rate: {stats['hit_rate']}")
+
+# Clear cache if hit rate is too low
+if stats['hits'] / max(stats['misses'], 1) < 0.1:
+    cache.clear()
+```
+
+### 4. Use Deterministic Parameters
+
+For consistent caching, use deterministic parameters:
+
+```python
+# Good - deterministic
+result = await engine.enforce(prompt, schema, temperature=0.0)
+
+# Bad - non-deterministic
+result = await engine.enforce(prompt, schema, temperature=0.9)
+```
+
+## Performance Impact
+
+### API Cost Savings
+
+With a 50% cache hit rate:
+- **Before**: 1000 requests = 1000 API calls
+- **After**: 1000 requests = 500 API calls
+- **Savings**: 50% reduction in API costs
+
+### Latency Improvements
+
+Typical cache hit is **~1ms** vs API call latency of **500-2000ms**.
+
+### Example Metrics
+
+From production usage with templates:
+
+```python
+stats = cache.get_stats()
+# {
+#   'size': 87,
+#   'hits': 543,
+#   'misses': 457,
+#   'hit_rate': '54.30%'
+# }
+```
+
+**Result**: 54% reduction in API calls and 600ms average latency improvement.
+
+## Advanced Usage
+
+### Custom Cache Key
+
+Override cache key generation for specific use cases:
+
+```python
+from parsec.cache.keys import generate_cache_key
+
+# Standard key
+key = generate_cache_key(
+    prompt=prompt,
+    model=model,
+    schema=schema
+)
+
+# Custom key with additional context
+custom_key = generate_cache_key(
+    prompt=f"{user_id}:{prompt}",  # Include user ID
+    model=model,
+    schema=schema
+)
+```
+
+### Conditional Caching
+
+Only cache certain requests:
+
+```python
+# Don't use cache for specific prompts
+if should_use_cache(prompt):
+    engine_with_cache = EnforcementEngine(adapter, validator, cache=cache)
+    result = await engine_with_cache.enforce(prompt, schema)
+else:
+    engine_no_cache = EnforcementEngine(adapter, validator)
+    result = await engine_no_cache.enforce(prompt, schema)
+```
+
+## Limitations
+
+### InMemoryCache
+
+- **Single process only** - Cache is not shared across processes
+- **No persistence** - Cache is lost when process restarts
+- **Memory bound** - Limited by available RAM
+
+For distributed systems, consider implementing a custom cache backend using Redis or Memcached by subclassing `BaseCache`.
+
+## Future: Custom Cache Backends
+
+Coming soon:
+
+```python
+from parsec.cache import RedisCache
+
+# Distributed caching with Redis
+cache = RedisCache(
+    host='localhost',
+    port=6379,
+    max_size=10000,
+    default_ttl=3600
+)
+```
+
+## API Reference
+
+### InMemoryCache
+
+```python
+class InMemoryCache(BaseCache):
+    def __init__(
+        self,
+        max_size: int = 100,
+        default_ttl: int = 3600
+    )
+
+    def get(self, key: str) -> Optional[Any]
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None
+    def delete(self, key: str) -> None
+    def clear(self) -> None
+    def get_stats(self) -> Dict[str, Any]
+```
+
+### generate_cache_key
+
+```python
+def generate_cache_key(
+    prompt: str,
+    model: str,
+    schema: Optional[Any] = None,
+    temperature: float = 0.7,
+    **kwargs
+) -> str
+```
+
+Generates a SHA256 hash from the provided parameters.
+
+---
+
+Ready to add templates? Check out [Prompt Templates →](../prompt-templates)

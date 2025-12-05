@@ -66,10 +66,71 @@ print(result.parsed_output)
 3. If invalid, the engine **automatically retried** with feedback
 4. You got **guaranteed valid output** matching your schema
 
+## Add Caching (Optional)
+
+Reduce API costs by caching responses:
+
+```python
+from parsec.cache import InMemoryCache
+
+# Create cache
+cache = InMemoryCache(max_size=100, default_ttl=3600)
+
+# Add to engine
+engine = EnforcementEngine(adapter, validator, cache=cache)
+
+# First call hits API
+result1 = await engine.enforce(prompt, schema)
+
+# Second identical call uses cache (no API call!)
+result2 = await engine.enforce(prompt, schema)
+
+# Check stats
+print(cache.get_stats())
+# {'hits': 1, 'misses': 1, 'hit_rate': '50.00%'}
+```
+
+## Use Templates (Optional)
+
+Create reusable, versioned prompts:
+
+```python
+from parsec.prompts import PromptTemplate, TemplateRegistry, TemplateManager
+
+# Create template
+template = PromptTemplate(
+    name="extract_person",
+    template="Extract person info from: {text}\n\nReturn as JSON.",
+    variables={"text": str},
+    required=["text"]
+)
+
+# Register with version
+registry = TemplateRegistry()
+registry.register(template, "1.0.0")
+
+# Use with enforcement
+manager = TemplateManager(registry, engine)
+result = await manager.enforce_with_template(
+    template_name="extract_person",
+    variables={"text": "John Doe, age 30"},
+    schema=schema
+)
+
+# Save templates to file
+registry.save_to_disk("templates.yaml")
+```
+
 ## Next Steps
 
-- [Model Adapters](./model-adapters) - Learn about OpenAI, Anthropic, and Gemini adapters
-- [Validators](./validators) - JSON schema and Pydantic validation options
-- [Dataset Collection](./dataset-collection) - Collect training data automatically
-- [Testing](./testing) - Write tests for your structured outputs
-- [Logging](./logging) - Monitor performance and debug issues
+### Production Features
+- [Prompt Templates](../prompt-templates) - Version-controlled, reusable prompts
+- [Caching](../caching) - Reduce API costs and improve performance
+- [Dataset Collection](../dataset-collection) - Collect training data automatically
+- [Logging](../logging) - Monitor performance and debug issues
+- [Testing](../testing) - Write tests for your structured outputs
+
+### Core Concepts
+- [Model Adapters](../model-adapters) - OpenAI, Anthropic, and Gemini integration
+- [Validators](../validators) - JSON schema and Pydantic validation options
+- [Engines](../engines) - Enforcement and streaming capabilities
