@@ -1,6 +1,6 @@
 [project]
 name = "parsec-llm"
-version = "0.1.3"
+version = "0.2.0"
 description = "Lightweight orchestration toolkit to generate, validate, repair and enforce structured output from LLMs"
 readme = "README.md"
 license = {text = "MIT"}
