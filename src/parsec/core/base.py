@@ -9,8 +9,8 @@ class ModelProviders(Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
-    GROQ = "groq"
     LLAMA_CPP = "llama_cpp"
+    OLLAMA = "ollama"  # ADD THI
 
 class OutputFormats(Enum):
     """Output formats supported by the system."""
